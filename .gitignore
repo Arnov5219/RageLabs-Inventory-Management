@@ -1,11 +1,24 @@
-.env
-.django-runtime/
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
 venv/
 .venv/
-__pycache__/
-*.pyc
-db.sqlite3
-media/          
+env/
+
+# Environment variables / secrets
+.env
+.env.*
+
+# Django generated files
+*.log
+
+# IDE / editor
 .vscode/
 .idea/
-*.log
+
+# OS files
+.DS_Store
+Thumbs.db
