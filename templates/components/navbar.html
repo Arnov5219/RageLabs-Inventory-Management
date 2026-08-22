@@ -1,0 +1,25 @@
+{% load static %}
+<header>
+    <nav class="navbar">
+        <a href="{% url 'inventory:dashboard' %}" class="logo" id="logo-brand">
+            <img src="{% static 'images/logo.png' %}" alt="LaundryRage">
+        </a>
+        <ul class="nav-links">
+            <li>
+                <a href="{% url 'inventory:dashboard' %}" id="nav-dashboard" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'inventory:laundry_supplies' %}" id="nav-supplies" class="{% if request.resolver_match.url_name == 'laundry_supplies' %}active{% endif %}">
+                    Supplies
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'inventory:laundry_accessories' %}" id="nav-accessories" class="{% if request.resolver_match.url_name == 'laundry_accessories' %}active{% endif %}">
+                    Accessories
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>

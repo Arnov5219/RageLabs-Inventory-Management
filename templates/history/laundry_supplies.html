@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}History of Laundry Supplies{% endblock %}
+
+{% block content %}
+<div class="page-title-area">
+    <div>
+        <h1>History of Laundry Supplies</h1>
+        <p>Audit trail of laundry supplies inventory status</p>
+    </div>
+</div>
+
+<!-- Month Filter and Google Sheets Export Form -->
+<div class="history-filter-card" style="background-color: var(--surface-card); border: 1px solid var(--border-color); border-radius: var(--radius-card); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-premium);">
+    <form method="get" action="" style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.5rem;">
+        <div class="form-group" style="margin-bottom: 0; flex-grow: 1; min-width: 250px;">
+            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">Select Month(s)</label>
+            <div class="months-checkbox-grid" style="display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0.5rem 0;">
+                {% for option in month_options %}
+                <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 500; color: var(--text-primary); cursor: pointer; user-select: none;">
+                    <input type="checkbox" name="months" value="{{ option.value }}" {% if option.checked %}checked{% endif %} style="accent-color: var(--accent-gold); width: 1.1rem; height: 1.1rem; cursor: pointer;">
+                    {{ option.label }}
+                </label>
+                {% empty %}
+                <span style="color: var(--text-muted); font-size: 0.9rem;">No historical dates available</span>
+                {% endfor %}
+            </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn-secondary" style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth);">
+                Apply Filter
+            </button>
+            <a href="https://docs.google.com/spreadsheets/d/1cTe35KF_O6QMcvr8j3NjFx8-hEO_SVxSZad-JkGSkXE/edit?usp=sharing"
+                target="_blank"
+                class="btn-primary"
+                style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth); text-decoration: none;">
+                Export to Google Sheets
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="history-table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th id="th-date" style="width: 15%;">Date</th>
+                    <th id="th-product" style="width: 30%;">Product</th>
+                    <th id="th-base" style="width: 15%;">Base Stock</th>
+                    <th id="th-closing" style="width: 15%;">Closing Stock</th>
+                    <th id="th-percentage" style="width: 13%;">Remaining %</th>
+                    <th id="th-status" style="width: 12%;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if rows %}
+                    {% for row in rows %}
+                    <tr class="history-row" data-product-id="{{ row.product.id }}">
+                        <td class="history-date">{{ row.date|date:"Y-m-d" }}</td>
+                        <td class="history-product-cell">
+                            <a href="{% url 'inventory:product_history_detail' row.product.id %}?date={{ row.date|date:'Y-m-d' }}" style="color: var(--accent-dark); font-weight: 600; text-decoration: none; transition: var(--transition-smooth);" class="product-drilldown-link">
+                                {{ row.product.name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if row.base_stock > 0 %}
+                                {{ row.base_stock|floatformat:"0" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 600; color: var(--text-primary);">
+                            {{ row.closing_stock|floatformat:"0" }}
+                        </td>
+                        <td style="font-weight: 600;">
+                            {% if row.remaining_percentage is not None %}
+                                {{ row.remaining_percentage|floatformat:"0" }}%
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge {% if row.status == 'RED' %}status-red{% elif row.status == 'YELLOW' %}status-yellow{% elif row.status == 'GREEN' %}status-green{% else %}status-gray{% endif %}">
+                                {% if row.status == 'RED' %}
+                                    LOW
+                                {% elif row.status == 'YELLOW' %}
+                                    MODERATE
+                                {% elif row.status == 'GREEN' %}
+                                    SUFFICIENT
+                                {% else %}
+                                    NO BASE
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                            No history logs available for laundry supplies.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

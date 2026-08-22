@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inventory{% endblock %}
+
+{% block content %}
+<div class="page-title-area">
+    <div>
+        <h1>Inventory Dashboard</h1>
+        
+    </div>
+</div>
+
+<!-- Metrics Row -->
+<div class="metrics-row">
+    <!-- Low Stock Card -->
+    <div class="metric-card low" id="metric-card-low" style="cursor: pointer;">
+        <h3>Low Stock Alert</h3>
+        <div class="metric-value low" id="metric-value-low">
+            {{ low_count }}
+            <span>Product{% if low_count != 1 %}s{% endif %}</span>
+        </div>
+        <div class="metric-label">Needs immediate attention</div>
+    </div>
+    
+    <!-- Moderate Stock Card -->
+    <div class="metric-card mod" id="metric-card-mod" style="cursor: pointer;">
+        <h3>Moderate Stock</h3>
+        <div class="metric-value mod" id="metric-value-mod">
+            {{ mod_count }}
+            <span>Product{% if mod_count != 1 %}s{% endif %}</span>
+        </div>
+        <div class="metric-label">Consider reordering soon</div>
+    </div>
+    
+    <!-- Sufficient Stock Card -->
+    <div class="metric-card suff" id="metric-card-suff" style="cursor: pointer;">
+        <h3>Sufficient Stock</h3>
+        <div class="metric-value suff" id="metric-value-suff">
+            {{ suff_count }}
+            <span>Product{% if suff_count != 1 %}s{% endif %}</span>
+        </div>
+        <div class="metric-label">Well stocked</div>
+    </div>
+</div>
+
+<!-- Services Section Title -->
+<h2 class="services-section-title">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+    Management Portals
+</h2>
+
+<!-- Services Grid -->
+<div class="services-grid management-portals-grid">
+    <!-- Service 1: Supplies -->
+    <a href="{% url 'inventory:laundry_supplies' %}" class="service-card" id="service-card-supplies">
+        <div class="service-image">
+            <img src="{% static 'images/supplies.jpg' %}" alt="Laundry Supplies">
+        </div>
+        <div class="service-content">
+            <div>
+                <h2>Laundry supplies</h2>
+                <div class="service-desc"></div>
+            </div>
+            <div class="service-action">
+                Manage Stock
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </div>
+        </div>
+    </a>
+    <!-- Service 3: Supplies History -->
+    <a href="{% url 'inventory:history_laundry_supplies' %}" class="service-card" id="service-card-supplies-history">
+        <div class="service-image">
+            <img src="{% static 'images/history_supplies.jpg' %}" alt="History of Laundry Supplies">
+        </div>
+        <div class="service-content">
+            <div>
+                <h2>History of Supplies</h2>
+                <div class="service-desc"></div>
+            </div>
+            <div class="service-action">
+                View History Logs
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </div>
+        </div>
+    </a>
+
+
+    <!-- Service 2: Accessories -->
+    <a href="{% url 'inventory:laundry_accessories' %}" class="service-card" id="service-card-accessories">
+        <div class="service-image">
+            <img src="{% static 'images/accessories.jpg' %}" alt="Laundry Accessories">
+        </div>
+        <div class="service-content">
+            <div>
+                <h2>Laundry accessories</h2>
+                <div class="service-desc"></div>
+            </div>
+            <div class="service-action">
+                Manage Stock
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </div>
+        </div>
+    </a>
+
+    
+    <!-- Service 4: Accessories History -->
+    <a href="{% url 'inventory:history_laundry_accessories' %}" class="service-card" id="service-card-accessories-history">
+        <div class="service-image">
+            <img src="{% static 'images/history_accessories.jpg' %}" alt="History of Laundry Accessories">
+        </div>
+        <div class="service-content">
+            <div>
+                <h2>History of Accessories</h2>
+                <div class="service-desc"></div>
+            </div>
+            <div class="service-action">
+                View History Logs
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </div>
+        </div>
+    </a>
+</div>
+
+<!-- Low Stock Details Modal -->
+<div class="modal-overlay" id="low-stock-modal">
+    <div class="modal-content" style="max-width: 540px; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h2>Low Stock Products</h2>
+            <button class="modal-close" type="button" onclick="closeDetailsModal('low-stock-modal')">&times;</button>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem;">
+            <h3 style="font-family: var(--font-heading); color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;">Laundry Supplies</h3>
+            {% if low_supplies %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for item in low_supplies %}
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                        </div>
+                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted); font-style: italic;">No low-stock supplies.</p>
+            {% endif %}
+
+            <h3 style="font-family: var(--font-heading); color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 2rem; margin-bottom: 1rem;">Laundry Accessories</h3>
+            {% if low_accessories %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for item in low_accessories %}
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                        </div>
+                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted); font-style: italic;">No low-stock accessories.</p>
+            {% endif %}
+        </div>
+        <div class="modal-actions" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+            <button class="btn-secondary" type="button" onclick="closeDetailsModal('low-stock-modal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Moderate Stock Details Modal -->
+<div class="modal-overlay" id="mod-stock-modal">
+    <div class="modal-content" style="max-width: 540px; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h2>Moderate Stock Products</h2>
+            <button class="modal-close" type="button" onclick="closeDetailsModal('mod-stock-modal')">&times;</button>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem;">
+            <h3 style="font-family: var(--font-heading); color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;">Laundry Supplies</h3>
+            {% if mod_supplies %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for item in mod_supplies %}
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                        </div>
+                        <span class="status-badge status-yellow" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted); font-style: italic;">No moderate-stock supplies.</p>
+            {% endif %}
+
+            <h3 style="font-family: var(--font-heading); color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 2rem; margin-bottom: 1rem;">Laundry Accessories</h3>
+            {% if mod_accessories %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for item in mod_accessories %}
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                        </div>
+                        <span class="status-badge status-yellow" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted); font-style: italic;">No moderate-stock accessories.</p>
+            {% endif %}
+        </div>
+        <div class="modal-actions" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+            <button class="btn-secondary" type="button" onclick="closeDetailsModal('mod-stock-modal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Sufficient Stock Details Modal -->
+<div class="modal-overlay" id="suff-stock-modal">
+    <div class="modal-content" style="max-width: 540px; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h2>Sufficient Stock Products</h2>
+            <button class="modal-close" type="button" onclick="closeDetailsModal('suff-stock-modal')">&times;</button>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem;">
+            <h3 style="font-family: var(--font-heading); color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;">Laundry Supplies</h3>
+            {% if suff_supplies %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for item in suff_supplies %}
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                        </div>
+                        <span class="status-badge status-green" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted); font-style: italic;">No sufficient-stock supplies.</p>
+            {% endif %}
+
+            <h3 style="font-family: var(--font-heading); color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 2rem; margin-bottom: 1rem;">Laundry Accessories</h3>
+            {% if suff_accessories %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for item in suff_accessories %}
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                        </div>
+                        <span class="status-badge status-green" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted); font-style: italic;">No sufficient-stock accessories.</p>
+            {% endif %}
+        </div>
+        <div class="modal-actions" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+            <button class="btn-secondary" type="button" onclick="closeDetailsModal('suff-stock-modal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDetailsModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+        }
+    }
+    
+    function closeDetailsModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const cardLow = document.getElementById('metric-card-low');
+        const cardMod = document.getElementById('metric-card-mod');
+        const cardSuff = document.getElementById('metric-card-suff');
+
+        if (cardLow) {
+            cardLow.addEventListener('click', () => openDetailsModal('low-stock-modal'));
+        }
+        if (cardMod) {
+            cardMod.addEventListener('click', () => openDetailsModal('mod-stock-modal'));
+        }
+        if (cardSuff) {
+            cardSuff.addEventListener('click', () => openDetailsModal('suff-stock-modal'));
+        }
+
+        // Close when clicking modal overlay background
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

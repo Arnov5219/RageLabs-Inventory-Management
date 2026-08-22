@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Inventory Management{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+
+<body>
+    <div class="ambient-background" aria-hidden="true">
+        <span class="ambient-bubble"></span>
+        <span class="ambient-bubble"></span>
+        <span class="ambient-bubble"></span>
+        <span class="ambient-bubble"></span>
+        <span class="ambient-bubble"></span>
+        <span class="ambient-bubble"></span>
+        <span class="ambient-bubble"></span>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Navbar Component Inclusion -->
+    {% include "components/navbar.html" %}
+
+    <!-- Alert / Messages Area -->
+    {% include "components/alert.html" %}
+
+    <!-- Main Content Area -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="{% static 'images/logo.png' %}" alt="LaundryRage">
+            </div>
+            <div class="footer-links">
+                <a href="{% url 'inventory:laundry_supplies' %}" id="footer-link-supplies">Supplies</a>
+                <a href="{% url 'inventory:laundry_accessories' %}" id="footer-link-accessories">Accessories</a>
+                <a href="{% url 'inventory:history_laundry_supplies' %}" id="footer-link-supplies-history">Supplies
+                    History</a>
+                <a href="{% url 'inventory:history_laundry_accessories' %}"
+                    id="footer-link-accessories-history">Accessories History</a>
+            </div>
+        </div>
+        <div class="copyright">
+            &copy; 2026 LaundryRage. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{% static 'js/inventory.js' %}"></script>
+</body>
+
+</html>

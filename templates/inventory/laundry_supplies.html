@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Laundry Supplies - LaundryRage{% endblock %}
+
+{% block content %}
+<div class="page-title-area">
+    <div>
+        <h1>Laundry Supplies</h1>
+        <p>Manage real-time logistics, adjustment controls, and stock levels</p>
+    </div>
+</div>
+
+{% if products %}
+<div class="product-grid">
+    {% for product in products %}
+        {% include "components/product_card.html" with product=product fallback_emoji="🧴" %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">🧴</div>
+    <h3>No active products found</h3>
+    <p>Use the admin panel to add products to the "Laundry Supplies" category.</p>
+</div>
+{% endif %}
+
+<!-- Overlay Modal for Setting Base Stock -->
+<div class="modal-overlay" id="restock-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Set Monthly Base Stock</h2>
+            <button class="modal-close" type="button">&times;</button>
+        </div>
+        <form id="restock-form" method="POST">
+            {% csrf_token %}
+            <input type="hidden" id="modal-product-id" name="product_id">
+            
+            <div class="form-group">
+                <label for="modal-quantity" id="modal-quantity-label">New Monthly Base Stock</label>
+                <input class="form-input" type="number" id="modal-quantity" name="quantity" min="0.01" step="any" required>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn-secondary" type="button">Cancel</button>
+                <button class="btn-primary" type="submit">Set Base Stock</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

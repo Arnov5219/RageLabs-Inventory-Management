@@ -1,0 +1,55 @@
+<div class="product-card" data-product-id="{{ product.id }}" data-product-unit="{{ product.unit }}">
+    {% if product.image %}
+        <img class="product-image" src="{{ product.image.url }}" alt="{{ product.name }}">
+    {% else %}
+        <!-- Fallback Emoji Banner -->
+        <div class="product-emoji-banner">
+            {{ fallback_emoji }}
+        </div>
+    {% endif %}
+    
+    <div class="product-info-area">
+        <div class="product-header-block">
+            <span class="product-category-tag">{{ product.category }}</span>
+            <h2 class="product-name">{{ product.name }}</h2>
+            <div class="product-size">Size: {{ product.product_size }}</div>
+            
+        </div>
+        
+        <div>
+            <!-- Clickable Stock Badge to Restock (AJAX Overlay modal) -->
+            <div class="stock-badge-container" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem;">
+                {% with monthly_inv=product.current_monthly_inventory %}
+                <span class="stock-badge {% if monthly_inv %}{% if monthly_inv.status == 'RED' %}low{% elif monthly_inv.status == 'YELLOW' %}mod{% elif monthly_inv.status == 'GREEN' %}suff{% else %}no-base{% endif %}{% else %}no-base{% endif %}" 
+                      id="stock-badge-{{ product.id }}"
+                      title="Click to Set Monthly Base Stock (AJAX)">
+                    {% if monthly_inv and monthly_inv.remaining_percentage is not None %}
+                        {{ monthly_inv.current_stock|floatformat:"0" }} / {{ monthly_inv.base_stock|floatformat:"0" }} {{ product.unit }} remaining
+                    {% else %}
+                        {{ product.inventory.current_quantity|floatformat:"0" }} {{ product.unit }} remaining (No Base Stock)
+                    {% endif %}
+                </span>
+                <span class="percentage-remaining" id="percentage-remaining-{{ product.id }}" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-left: 1.5rem; margin-top: -0.15rem;">
+                    {% if monthly_inv and monthly_inv.remaining_percentage is not None %}
+                        {{ monthly_inv.remaining_percentage|floatformat:"0" }}% remaining
+                    {% else %}
+                        Base stock not set
+                    {% endif %}
+                </span>
+                {% endwith %}
+            </div>
+            
+            <!-- Adjust Controls: Pill Selector and Edit button (AJAX) -->
+            <div class="adjust-controls">
+                <div class="pill-selector">
+                    <button class="pill-btn minus" type="button">−</button>
+                    <span class="pill-value">{{ product.inventory.current_quantity|floatformat:"0" }}</span>
+                    <input type="number" class="pill-value-input" value="{{ product.inventory.current_quantity|floatformat:"0" }}" min="0" step="1" style="display: none;" required>
+                    <button class="pill-btn plus" type="button">+</button>
+                </div>
+                <button class="edit-btn" type="button">Edit</button>
+            </div>
+            
+        </div>
+    </div>
+</div>

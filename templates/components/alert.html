@@ -1,0 +1,13 @@
+{% if messages %}
+<div class="messages-container" style="max-width: 1400px; margin: 1rem auto 0 auto; padding: 0 2rem;">
+    {% for message in messages %}
+    <div class="toast {% if message.tags == 'error' or message.tags == 'warning' %}warning{% else %}success{% endif %} show" 
+         style="transform: none; position: relative; width: 100%; max-width: 100%; margin-bottom: 0.75rem; box-shadow: var(--shadow-premium);">
+        <span class="toast-icon">
+            {% if message.tags == 'error' or message.tags == 'warning' %}⚠{% else %}✓{% endif %}
+        </span>
+        <span class="toast-message">{{ message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

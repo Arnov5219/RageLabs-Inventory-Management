@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Detailed History - {{ product.name }} - LaundryRage{% endblock %}
+
+{% block content %}
+<div class="page-title-area">
+    <div>
+        <a href="{% if product.category == 'Laundry Supplies' %}{% url 'inventory:history_laundry_supplies' %}{% else %}{% url 'inventory:history_laundry_accessories' %}{% endif %}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; font-weight: 600; margin-bottom: 1.5rem; padding: 0.5rem 1rem;">
+            &larr; Back to Summary History
+        </a>
+        <h1>{{ product.name }}</h1>
+        <p>Detailed transaction log and baseline audits{% if selected_date %} for {{ selected_date|date:"F j, Y" }}{% endif %}</p>
+    </div>
+</div>
+
+<div class="history-table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 20%;">Date &amp; Time</th>
+                    <th style="width: 10%;">Action</th>
+                    <th style="width: 15%;">Change Quantity</th>
+                    <th style="width: 10%;">Before</th>
+                    <th style="width: 10%;">After</th>
+                    <th style="width: 12%;">Base Stock</th>
+                    <th style="width: 10%;">Remaining %</th>
+                    <th style="width: 13%;">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if history_entries %}
+                    {% for entry in history_entries %}
+                    <tr class="history-row">
+                        <td>{{ entry.created_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            <span class="status-badge {% if entry.change_type == 'ADD' %}status-green{% elif entry.change_type == 'USE' %}status-red{% else %}status-yellow{% endif %}">
+                                {{ entry.change_type }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if entry.change_type == 'ADD' %}
+                                <span class="history-text-add">+{{ entry.quantity|floatformat:"0" }}</span>
+                            {% elif entry.change_type == 'USE' %}
+                                <span class="history-text-use">-{{ entry.quantity|floatformat:"0" }}</span>
+                            {% else %}
+                                <span style="font-weight: 600; color: var(--accent-dark);">Set base to {{ entry.quantity|floatformat:"0" }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.previous_quantity|floatformat:"0" }}</td>
+                        <td>{{ entry.new_quantity|floatformat:"0" }}</td>
+                        <td>
+                            {% if entry.base_stock is not None and entry.base_stock > 0 %}
+                                {{ entry.base_stock|floatformat:"0" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entry.remaining_percentage is not None %}
+                                {{ entry.remaining_percentage|floatformat:"0" }}%
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.notes|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                            No transaction logs available for this product.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
