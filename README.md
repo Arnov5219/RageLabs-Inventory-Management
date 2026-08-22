@@ -48,13 +48,7 @@ Initialize the SQLite database schema:
 python manage.py migrate
 ```
 
-### 2. Create a Superuser (Optional)
-To access the Django Admin panel:
-```bash
-python manage.py createsuperuser
-```
-
-### 3. Run the Development Server
+### 2. Run the Development Server
 Start the local server:
 ```bash
 python manage.py runserver
