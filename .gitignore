@@ -9,8 +9,7 @@ venv/
 env/
 
 # Environment variables / secrets
-.env
-.env.*
+
 
 # Django generated files
 *.log
