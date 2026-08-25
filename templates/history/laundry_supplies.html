@@ -30,12 +30,9 @@
             <button type="submit" class="btn-secondary" style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth);">
                 Apply Filter
             </button>
-            <a href="https://docs.google.com/spreadsheets/d/1cTe35KF_O6QMcvr8j3NjFx8-hEO_SVxSZad-JkGSkXE/edit?usp=sharing"
-                target="_blank"
-                class="btn-primary"
-                style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth); text-decoration: none;">
+            <button type="submit" name="export" value="google_sheets" class="btn-primary" style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth); border: none;">
                 Export to Google Sheets
-            </a>
+            </button>
         </div>
     </form>
 </div>
@@ -106,4 +103,10 @@
         </table>
     </div>
 </div>
+
+{% if open_sheet_url %}
+<script>
+    window.open('{{ open_sheet_url }}', '_blank');
+</script>
+{% endif %}
 {% endblock %}

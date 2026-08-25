@@ -1,126 +1,374 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Inventory{% endblock %}
+{% block title %}Inventory Dashboard - LaundryRage{% endblock %}
 
 {% block content %}
-<div class="page-title-area">
+<!-- Custom Style overrides for Dashboard -->
+<style>
+    .metric-card {
+        background: var(--surface-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: rgba(56, 189, 248, 0.4);
+    }
+    .branch-row {
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+    .branch-row:hover {
+        background-color: var(--surface-hover) !important;
+    }
+    .portal-card {
+        background: var(--surface-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+    .portal-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: rgba(56, 189, 248, 0.3);
+    }
+    .portal-image {
+        height: 160px;
+        overflow: hidden;
+        position: relative;
+    }
+    .portal-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    .portal-card:hover .portal-image img {
+        transform: scale(1.06);
+    }
+    .portal-content {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex-grow: 1;
+    }
+    .portal-title {
+        font-family: var(--font-heading);
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .portal-desc {
+        font-size: 0.88rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+        margin-bottom: 1rem;
+    }
+    .portal-action {
+        margin-top: auto;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--accent-blue);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+
+<!-- Page Header Area -->
+<div class="page-title-area" style="margin-bottom: 2.5rem;">
     <div>
-        <h1>Inventory Dashboard</h1>
-        
+        <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--text-primary); margin: 0;">Inventory Dashboard</h1>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+            {% if request.user.is_superuser or request.user.is_staff %}
+                {% if is_all_branches %}
+                    🌐 All Branches
+                {% else %}
+                    📍 {{ active_branch.branch_name }}
+                {% endif %}
+            {% else %}
+                📍 {{ active_branch.branch_name }}
+            {% endif %}
+            <span style="color: var(--border-color);">&middot;</span>
+            <span style="color: var(--text-muted); font-weight: 500;">Updated {{ latest_time }}</span>
+        </p>
     </div>
 </div>
 
 <!-- Metrics Row -->
-<div class="metrics-row">
+<div class="metrics-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
     <!-- Low Stock Card -->
     <div class="metric-card low" id="metric-card-low" style="cursor: pointer;">
-        <h3>Low Stock Alert</h3>
-        <div class="metric-value low" id="metric-value-low">
-            {{ low_count }}
-            <span>Product{% if low_count != 1 %}s{% endif %}</span>
+        <div>
+            <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🔴 Low Stock Alert</h3>
+            <div class="metric-value low" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-red); display: flex; align-items: baseline;">
+                {{ low_count }}
+                <span style="font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; margin-left: 0.25rem;">Product{% if low_count != 1 %}s{% endif %}</span>
+            </div>
+            <div class="metric-label" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;">
+                {% if request.user.is_superuser or request.user.is_staff %}
+                    {% if is_all_branches %}
+                        Across {{ low_branches }} branch{% if low_branches != 1 %}es{% endif %}
+                    {% else %}
+                        In {{ active_branch.branch_name }}
+                    {% endif %}
+                {% else %}
+                    In {{ active_branch.branch_name }}
+                {% endif %}
+            </div>
         </div>
-        <div class="metric-label">Needs immediate attention</div>
+        <div style="font-size: 0.85rem; color: var(--accent-blue); font-weight: 700; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.25rem;">View products &rarr;</div>
     </div>
     
     <!-- Moderate Stock Card -->
     <div class="metric-card mod" id="metric-card-mod" style="cursor: pointer;">
-        <h3>Moderate Stock</h3>
-        <div class="metric-value mod" id="metric-value-mod">
-            {{ mod_count }}
-            <span>Product{% if mod_count != 1 %}s{% endif %}</span>
+        <div>
+            <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🟡 Moderate Stock</h3>
+            <div class="metric-value mod" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-orange); display: flex; align-items: baseline;">
+                {{ mod_count }}
+                <span style="font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; margin-left: 0.25rem;">Product{% if mod_count != 1 %}s{% endif %}</span>
+            </div>
+            <div class="metric-label" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;">
+                {% if request.user.is_superuser or request.user.is_staff %}
+                    {% if is_all_branches %}
+                        Across {{ mod_branches }} branch{% if mod_branches != 1 %}es{% endif %}
+                    {% else %}
+                        In {{ active_branch.branch_name }}
+                    {% endif %}
+                {% else %}
+                    In {{ active_branch.branch_name }}
+                {% endif %}
+            </div>
         </div>
-        <div class="metric-label">Consider reordering soon</div>
+        <div style="font-size: 0.85rem; color: var(--accent-blue); font-weight: 700; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.25rem;">View products &rarr;</div>
     </div>
     
     <!-- Sufficient Stock Card -->
     <div class="metric-card suff" id="metric-card-suff" style="cursor: pointer;">
-        <h3>Sufficient Stock</h3>
-        <div class="metric-value suff" id="metric-value-suff">
-            {{ suff_count }}
-            <span>Product{% if suff_count != 1 %}s{% endif %}</span>
+        <div>
+            <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🟢 Sufficient Stock</h3>
+            <div class="metric-value suff" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-green); display: flex; align-items: baseline;">
+                {{ suff_count }}
+                <span style="font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; margin-left: 0.25rem;">Product{% if suff_count != 1 %}s{% endif %}</span>
+            </div>
+            <div class="metric-label" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;">
+                {% if request.user.is_superuser or request.user.is_staff %}
+                    {% if is_all_branches %}
+                        Across {{ suff_branches }} branch{% if suff_branches != 1 %}es{% endif %}
+                    {% else %}
+                        In {{ active_branch.branch_name }}
+                    {% endif %}
+                {% else %}
+                    In {{ active_branch.branch_name }}
+                {% endif %}
+            </div>
         </div>
-        <div class="metric-label">Well stocked</div>
+        <div style="font-size: 0.85rem; color: var(--accent-blue); font-weight: 700; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.25rem;">View products &rarr;</div>
     </div>
 </div>
 
-<!-- Services Section Title -->
-<h2 class="services-section-title">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+{% if request.user.is_superuser or request.user.is_staff %}
+<!-- Admin-Only: Branch Overview Section -->
+<h2 class="services-section-title" style="margin-top: 3rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: 800;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+    Branch Overview
+</h2>
+<div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
+    <table style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
+        <thead>
+            <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-weight: 700;">
+                <th style="padding: 1rem 0.5rem;">Branch</th>
+                <th style="padding: 1rem 0.5rem; text-align: center;">🔴 RED</th>
+                <th style="padding: 1rem 0.5rem; text-align: center;">🟡 YELLOW</th>
+                <th style="padding: 1rem 0.5rem; text-align: center;">🟢 GREEN</th>
+                <th style="padding: 1rem 0.5rem; text-align: right;">REFILL REQUIRED</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in branch_rows %}
+            <tr class="branch-row" onclick="window.location.href='{% url 'inventory:switch_branch' %}?branch_id={{ row.branch.id }}'" style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 1.1rem 0.5rem; font-weight: 700; color: var(--accent-blue);">{{ row.branch.branch_name }}</td>
+                <td style="padding: 1.1rem 0.5rem; text-align: center; color: var(--accent-red); font-weight: 700;">{{ row.red }}</td>
+                <td style="padding: 1.1rem 0.5rem; text-align: center; color: var(--accent-orange); font-weight: 700;">{{ row.yellow }}</td>
+                <td style="padding: 1.1rem 0.5rem; text-align: center; color: var(--accent-green); font-weight: 700;">{{ row.green }}</td>
+                <td style="padding: 1.1rem 0.5rem; text-align: right; font-weight: 700; color: {% if row.refill > 0 %}var(--accent-orange){% else %}var(--text-muted){% endif %};">
+                    {% if row.refill > 0 %}{{ row.refill|floatformat:"0" }} units{% else %}&mdash;{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            <tr style="font-weight: 800; border-top: 2.5px solid var(--border-color); background: rgba(0, 0, 0, 0.015);">
+                <td style="padding: 1.2rem 0.5rem; color: var(--text-primary);">TOTAL</td>
+                <td style="padding: 1.2rem 0.5rem; text-align: center; color: var(--accent-red); font-size: 1.05rem;">{{ total_red }}</td>
+                <td style="padding: 1.2rem 0.5rem; text-align: center; color: var(--accent-orange); font-size: 1.05rem;">{{ total_yellow }}</td>
+                <td style="padding: 1.2rem 0.5rem; text-align: center; color: var(--accent-green); font-size: 1.05rem;">{{ total_green }}</td>
+                <td style="padding: 1.2rem 0.5rem; text-align: right; color: {% if total_refill_overall > 0 %}var(--accent-orange){% else %}var(--text-muted){% endif %}; font-size: 1.05rem;">
+                    {% if total_refill_overall > 0 %}{{ total_refill_overall|floatformat:"0" }} units{% else %}&mdash;{% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Admin-Only: Attention Required Section -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; margin-bottom: 1.25rem;">
+    <h2 class="services-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: 800;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Attention Required
+    </h2>
+    {% if has_attention %}
+    <a href="#" onclick="openDetailsModal('low-stock-modal'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">View all &rarr;</a>
+    {% endif %}
+</div>
+<div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
+    {% if has_attention %}
+    <table style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
+        <thead>
+            <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-weight: 700;">
+                <th style="padding: 1rem 0.5rem;">Branch</th>
+                <th style="padding: 1rem 0.5rem;">Product</th>
+                <th style="padding: 1rem 0.5rem; text-align: center;">Current</th>
+                <th style="padding: 1rem 0.5rem; text-align: center;">Base</th>
+                <th style="padding: 1rem 0.5rem; text-align: center;">Status</th>
+                <th style="padding: 1rem 0.5rem; text-align: right;">Refill</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in attention_display %}
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 1rem 0.5rem; font-weight: 600; color: var(--text-secondary);">{{ item.branch.branch_name }}</td>
+                <td style="padding: 1rem 0.5rem; font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</td>
+                <td style="padding: 1rem 0.5rem; text-align: center; font-weight: 600;">{{ item.current_stock|floatformat:"0" }} {{ item.product.unit }}</td>
+                <td style="padding: 1rem 0.5rem; text-align: center; color: var(--text-muted);">{{ item.base_stock|floatformat:"0" }} {{ item.product.unit }}</td>
+                <td style="padding: 1rem 0.5rem; text-align: center;">
+                    <span class="status-badge status-red" style="font-size: 0.72rem; padding: 0.25rem 0.75rem; font-weight: 700; border-radius: 4px;">RED</span>
+                </td>
+                <td style="padding: 1rem 0.5rem; text-align: right; font-weight: 700; color: var(--accent-red);">Need {{ item.required_refill|floatformat:"0" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 2.5rem; color: var(--accent-green); font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-green);"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        No products require immediate attention.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Admin-Only: Inventory Summary Section -->
+<h2 class="services-section-title" style="margin-top: 3rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: 800;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+    Inventory Summary
+</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3.5rem;">
+    <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem;">
+        <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Total Products</span>
+        <span style="font-size: 2rem; font-weight: 800; color: var(--text-primary);">{{ total_products }}</span>
+    </div>
+    <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem;">
+        <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Total Stock</span>
+        <span style="font-size: 2rem; font-weight: 800; color: var(--text-primary);">{{ total_stock|floatformat:"0" }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 500;">units</span></span>
+    </div>
+    <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem;">
+        <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Refill Required</span>
+        <span style="font-size: 2rem; font-weight: 800; color: {% if refill_required > 0 %}var(--accent-orange){% else %}var(--text-primary){% endif %};">
+            {{ refill_required|floatformat:"0" }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 500;">units</span>
+        </span>
+    </div>
+    <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem;">
+        <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Active Branches</span>
+        <span style="font-size: 2rem; font-weight: 800; color: var(--text-primary);">{{ active_branches_count }}</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Management Portals Section -->
+{% if not user.is_superuser %}
+<h2 class="services-section-title" style="margin-top: 3rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: 800;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
     Management Portals
 </h2>
 
-<!-- Services Grid -->
-<div class="services-grid management-portals-grid">
-    <!-- Service 1: Supplies -->
-    <a href="{% url 'inventory:laundry_supplies' %}" class="service-card" id="service-card-supplies">
-        <div class="service-image">
+<!-- Portals Grid (3 consistent cards) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
+    <!-- Supplies Portal -->
+    <a href="{% url 'inventory:laundry_supplies' %}" class="portal-card">
+        <div class="portal-image">
             <img src="{% static 'images/supplies.jpg' %}" alt="Laundry Supplies">
         </div>
-        <div class="service-content">
-            <div>
-                <h2>Laundry supplies</h2>
-                <div class="service-desc"></div>
-            </div>
-            <div class="service-action">
+        <div class="portal-content">
+            <h3 class="portal-title">Laundry Supplies</h3>
+            <p class="portal-desc">Manage, monitor, and adjust detergents, bleach powders, chemicals, and core supplies.</p>
+            <div class="portal-action">
                 Manage Stock
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
             </div>
         </div>
     </a>
-    <!-- Service 3: Supplies History -->
-    <a href="{% url 'inventory:history_laundry_supplies' %}" class="service-card" id="service-card-supplies-history">
-        <div class="service-image">
-            <img src="{% static 'images/history_supplies.jpg' %}" alt="History of Laundry Supplies">
+
+    <!-- History of Supplies Portal -->
+    <a href="{% url 'inventory:history_laundry_supplies' %}" class="portal-card">
+        <div class="portal-image">
+            <img src="{% static 'images/history_supplies.jpg' %}" alt="History of Supplies">
         </div>
-        <div class="service-content">
-            <div>
-                <h2>History of Supplies</h2>
-                <div class="service-desc"></div>
-            </div>
-            <div class="service-action">
-                View History Logs
+        <div class="portal-content">
+            <h3 class="portal-title">History of Supplies</h3>
+            <p class="portal-desc">Review supply-related stock history logs, daily changes, and audit trails.</p>
+            <div class="portal-action">
+                View History
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
             </div>
         </div>
     </a>
 
 
-    <!-- Service 2: Accessories -->
-    <a href="{% url 'inventory:laundry_accessories' %}" class="service-card" id="service-card-accessories">
-        <div class="service-image">
+    <!-- Accessories Portal -->
+    <a href="{% url 'inventory:laundry_accessories' %}" class="portal-card">
+        <div class="portal-image">
             <img src="{% static 'images/accessories.jpg' %}" alt="Laundry Accessories">
         </div>
-        <div class="service-content">
-            <div>
-                <h2>Laundry accessories</h2>
-                <div class="service-desc"></div>
-            </div>
-            <div class="service-action">
+        <div class="portal-content">
+            <h3 class="portal-title">Laundry Accessories</h3>
+            <p class="portal-desc">Monitor, audit, and restock clothes hangers, laundry bags, safety pins, tags, and accessories.</p>
+            <div class="portal-action">
                 Manage Stock
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
             </div>
         </div>
     </a>
 
-    
-    <!-- Service 4: Accessories History -->
-    <a href="{% url 'inventory:history_laundry_accessories' %}" class="service-card" id="service-card-accessories-history">
-        <div class="service-image">
-            <img src="{% static 'images/history_accessories.jpg' %}" alt="History of Laundry Accessories">
+
+    <!-- History of Accessories Portal -->
+    <a href="{% url 'inventory:history_laundry_accessories' %}" class="portal-card">
+        <div class="portal-image">
+            <img src="{% static 'images/history_accessories.jpg' %}" alt="History of Accessories">
         </div>
-        <div class="service-content">
-            <div>
-                <h2>History of Accessories</h2>
-                <div class="service-desc"></div>
-            </div>
-            <div class="service-action">
-                View History Logs
+        <div class="portal-content">
+            <h3 class="portal-title">History of Accessories</h3>
+            <p class="portal-desc">Review accessory-related stock history logs, daily changes, and audit trails.</p>
+            <div class="portal-action">
+                View History
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
             </div>
         </div>
     </a>
 </div>
+{% endif %}
 
 <!-- Low Stock Details Modal -->
 <div class="modal-overlay" id="low-stock-modal">
@@ -136,10 +384,14 @@
                 {% for item in low_supplies %}
                     <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                            <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem;">{{ item.product.name }}</div>
+                            <div style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.15rem;">
+                                <span><strong style="color: var(--accent-blue);">[{{ item.branch.branch_name }}]</strong> ({{ item.branch.branch_code }})</span>
+                                <span>{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</span>
+                                <span style="color: var(--accent-orange); font-weight: 600;">Refill needed: {{ item.required_refill|floatformat:"0" }} {{ item.product.unit }}</span>
+                            </div>
                         </div>
-                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{% if item.remaining_percentage is not None %}{{ item.remaining_percentage|floatformat:"0" }}%{% else %}0%{% endif %} remaining</span>
                     </div>
                 {% endfor %}
                 </div>
@@ -153,10 +405,14 @@
                 {% for item in low_accessories %}
                     <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                            <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem;">{{ item.product.name }}</div>
+                            <div style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.15rem;">
+                                <span><strong style="color: var(--accent-blue);">[{{ item.branch.branch_name }}]</strong> ({{ item.branch.branch_code }})</span>
+                                <span>{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</span>
+                                <span style="color: var(--accent-orange); font-weight: 600;">Refill needed: {{ item.required_refill|floatformat:"0" }} {{ item.product.unit }}</span>
+                            </div>
                         </div>
-                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
+                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{% if item.remaining_percentage is not None %}{{ item.remaining_percentage|floatformat:"0" }}%{% else %}0%{% endif %} remaining</span>
                     </div>
                 {% endfor %}
                 </div>
@@ -164,7 +420,12 @@
                 <p style="color: var(--text-muted); font-style: italic;">No low-stock accessories.</p>
             {% endif %}
         </div>
-        <div class="modal-actions" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+        <div class="modal-actions" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div>
+                {% if request.user.is_superuser or request.user.is_staff %}
+                    <button class="btn-primary" id="btn-request-refill" type="button" onclick="triggerRequestRefill()" style="height: 2.5rem; padding: 0 1.25rem; border-radius: var(--radius-pill); font-weight: 700; cursor: pointer;">Request Refill</button>
+                {% endif %}
+            </div>
             <button class="btn-secondary" type="button" onclick="closeDetailsModal('low-stock-modal')">Close</button>
         </div>
     </div>
@@ -185,7 +446,9 @@
                     <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                {% if is_all_branches %}<span style="color: var(--accent-blue); font-weight: 700;">[{{ item.branch.branch_name }}]</span> {% endif %}{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining
+                            </div>
                         </div>
                         <span class="status-badge status-yellow" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
                     </div>
@@ -202,7 +465,9 @@
                     <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                {% if is_all_branches %}<span style="color: var(--accent-blue); font-weight: 700;">[{{ item.branch.branch_name }}]</span> {% endif %}{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining
+                            </div>
                         </div>
                         <span class="status-badge status-yellow" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
                     </div>
@@ -233,7 +498,9 @@
                     <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                {% if is_all_branches %}<span style="color: var(--accent-blue); font-weight: 700;">[{{ item.branch.branch_name }}]</span> {% endif %}{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining
+                            </div>
                         </div>
                         <span class="status-badge status-green" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
                     </div>
@@ -250,7 +517,9 @@
                     <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-weight: 700; color: var(--text-primary);">{{ item.product.name }}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                {% if is_all_branches %}<span style="color: var(--accent-blue); font-weight: 700;">[{{ item.branch.branch_name }}]</span> {% endif %}{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining
+                            </div>
                         </div>
                         <span class="status-badge status-green" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{{ item.remaining_percentage|floatformat:"0" }}% remaining</span>
                     </div>
@@ -267,6 +536,44 @@
 </div>
 
 <script>
+    function triggerRequestRefill() {
+        const btn = document.getElementById('btn-request-refill');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = 'Requesting...';
+        }
+        
+        fetch('{% url "inventory:request_refill_ajax" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = 'Request Refill';
+            }
+            if (data.success) {
+                showToast('Refill request sent successfully!', 'success');
+                closeDetailsModal('low-stock-modal');
+            } else {
+                showToast('Error: ' + data.error, 'warning');
+            }
+        })
+        .catch(err => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = 'Request Refill';
+            }
+            showToast('Network error while requesting refill.', 'warning');
+            console.error(err);
+        });
+    }
+
     function openDetailsModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {

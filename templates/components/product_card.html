@@ -36,6 +36,11 @@
                         Base stock not set
                     {% endif %}
                 </span>
+                {% if monthly_inv and monthly_inv.required_refill > 0 %}
+                <span class="refill-recommendation" id="refill-recommendation-{{ product.id }}" style="font-size: 0.8rem; font-weight: 600; color: var(--accent-orange); margin-left: 1.5rem; margin-top: 0.1rem; display: block;">
+                    Refill needed: {{ monthly_inv.required_refill|floatformat:"0" }} {{ product.unit }}
+                </span>
+                {% endif %}
                 {% endwith %}
             </div>
             

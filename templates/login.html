@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login - LaundryRage{% endblock %}
+
+{% block content %}
+<div class="login-container" style="display: flex; justify-content: center; align-items: center; min-height: 70vh; padding: 2rem 0;">
+    <div class="login-card" style="background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 3rem; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); animation: fadeIn 0.6s ease-out;">
+        
+        <!-- Login Header with Logo -->
+        <div class="login-header" style="text-align: center; margin-bottom: 2.5rem;">
+            <!-- LaundryRage Logo -->
+            <div style="margin-bottom: 1rem;">
+                <img src="{% static 'images/logo.png' %}" 
+                     alt="LaundryRage Logo" 
+                     style="height: 80px; width: auto; object-fit: contain; transition: transform 0.3s ease;"
+                     onmouseover="this.style.transform='scale(1.05)';"
+                     onmouseout="this.style.transform='scale(1)';">
+            </div>
+            
+            <h1 style="font-family: var(--font-heading); font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem;">Sign In</h1>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">Inventory Access Portal</p>
+        </div>
+
+        <!-- Login Form -->
+        <form method="POST" style="display: flex; flex-direction: column; gap: 1.5rem;">
+            {% csrf_token %}
+            
+            <!-- Username Field -->
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label for="id_username" style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">
+                    Username
+                </label>
+                <input type="text" 
+                       name="username" 
+                       id="id_username" 
+                       required 
+                       placeholder="Enter username" 
+                       style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 0.8rem 1rem; color: var(--text-primary); font-family: var(--font-body); transition: all 0.3s ease; outline: none; width: 100%; box-sizing: border-box;"
+                       onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 10px rgba(56, 189, 248, 0.2)'; this.style.backgroundColor='rgba(15, 23, 42, 0.9)';"
+                       onblur="this.style.borderColor='rgba(255, 255, 255, 0.1)'; this.style.boxShadow='none'; this.style.backgroundColor='rgba(15, 23, 42, 0.6)';">
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label for="id_password" style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">
+                    Password
+                </label>
+                <input type="password" 
+                       name="password" 
+                       id="id_password" 
+                       required 
+                       placeholder="Enter password"
+                       style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 0.8rem 1rem; color: var(--text-primary); font-family: var(--font-body); transition: all 0.3s ease; outline: none; width: 100%; box-sizing: border-box;"
+                       onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 10px rgba(56, 189, 248, 0.2)'; this.style.backgroundColor='rgba(15, 23, 42, 0.9)';"
+                       onblur="this.style.borderColor='rgba(255, 255, 255, 0.1)'; this.style.boxShadow='none'; this.style.backgroundColor='rgba(15, 23, 42, 0.6)';">
+            </div>
+
+            <!-- Submit Button -->
+            <div style="margin-top: 1rem;">
+                <button type="submit" 
+                        class="btn-primary" 
+                        style="width: 100%; padding: 0.9rem; font-weight: 700; font-size: 1rem; border-radius: 10px; background: linear-gradient(135deg, #0ea5e9, #6366f1); border: none; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(14, 165, 233, 0.5)';"
+                        onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(14, 165, 233, 0.3)';">
+                    Authenticate
+                </button>
+            </div>
+
+            <!-- Error Messages (if any) -->
+            {% if form.non_field_errors %}
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+                    <p style="color: #fca5a5; font-size: 0.9rem; margin: 0;">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}<br>
+                        {% endfor %}
+                    </p>
+                </div>
+            {% endif %}
+        </form>
+
+        <!-- Admin Link -->
+        <div style="margin-top: 2rem; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.5rem;">
+            <a href="/admin/" 
+               style="color: var(--text-secondary); font-size: 0.85rem; text-decoration: none; transition: color 0.3s ease; display: inline-block;"
+               onmouseover="this.style.color='#38bdf8';" 
+               onmouseout="this.style.color='var(--text-secondary)';">
+                Access Administrative Control Panel &rarr;
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Animations -->
+<style>
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 480px) {
+        .login-card {
+            padding: 2rem !important;
+            border-radius: 15px !important;
+        }
+
+        h1 {
+            font-size: 1.5rem !important;
+        }
+
+        .login-header {
+            margin-bottom: 2rem !important;
+        }
+
+        img[alt="LaundryRage Logo"] {
+            height: 60px !important;
+        }
+    }
+</style>
+{% endblock %}

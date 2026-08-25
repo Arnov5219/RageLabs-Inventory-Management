@@ -1,10 +1,11 @@
 {% load static %}
 <header>
-    <nav class="navbar">
+    <nav class="navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem;">
         <a href="{% url 'inventory:dashboard' %}" class="logo" id="logo-brand">
             <img src="{% static 'images/logo.png' %}" alt="LaundryRage">
         </a>
-        <ul class="nav-links">
+        {% if not user.is_superuser %}
+        <ul class="nav-links" style="display: flex; align-items: center; gap: 2rem; list-style: none; margin: 0; padding: 0;">
             <li>
                 <a href="{% url 'inventory:dashboard' %}" id="nav-dashboard" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                     Dashboard
@@ -20,6 +21,37 @@
                     Accessories
                 </a>
             </li>
+            {% endif %}
+            {% if request.user.is_authenticated %}
+                <li style="display: flex; align-items: center; gap: 0.5rem;">
+                    {% if request.user.is_superuser or request.user.is_staff %}
+                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Branch:</span>
+                        <select onchange="window.location.href='{% url 'inventory:switch_branch' %}?branch_id=' + this.value" 
+                                style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: var(--text-primary); padding: 0.35rem 0.75rem; font-family: var(--font-body); font-size: 0.85rem; outline: none; cursor: pointer; transition: all 0.3s ease;">
+                            <option value="all" {% if not request.session.selected_branch_id %}selected{% endif %}>All Branches</option>
+                            {% for b in all_branches %}
+                                <option value="{{ b.id }}" {% if request.session.selected_branch_id == b.id %}selected{% endif %}>{{ b.branch_name }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <span class="status-badge status-green" style="font-size: 0.85rem; padding: 0.3rem 0.8rem; font-weight: 700;">
+                            📍 {{ request.current_branch.branch_name }}
+                        </span>
+                    {% endif %}
+                </li>
+                <li>
+                    <a href="{% url 'inventory:logout' %}" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: color 0.3s ease;"
+                       onmouseover="this.style.color='var(--accent-red)';" onmouseout="this.style.color='var(--text-muted)';">
+                        Logout ({{ request.user.username }})
+                    </a>
+                </li>
+            {% else %}
+                <li>
+                    <a href="{% url 'inventory:login' %}" style="color: var(--accent-blue); font-size: 0.9rem; font-weight: 600; text-decoration: none;">
+                        Login
+                    </a>
+                </li>
+            {% endif %}
         </ul>
     </nav>
 </header>

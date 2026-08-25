@@ -5,8 +5,10 @@ from datetime import date
 import json
 from unittest.mock import patch
 
-from .models import Product, Inventory, StockHistory, MonthlyInventory, DailyInventory
+from .models import Branch, EmployeeProfile, Product, Inventory, StockHistory, MonthlyInventory, DailyInventory
 from .helpers import add_stock, use_stock, edit_stock, set_base_stock
+from .middleware import set_current_branch
+from django.contrib.auth.models import User
 
 class ProductPropertiesTests(TestCase):
     def setUp(self):
@@ -164,8 +166,10 @@ class StockHelpersTests(TestCase):
 
     def test_use_stock_success(self):
         """use_stock decreases current quantity and records history snapshot."""
-        # Establish base stock first
-        set_base_stock(self.product, Decimal("10.00"))
+        # Establish base stock on yesterday to avoid same-day merge in the test
+        from django.utils import timezone
+        yesterday = timezone.localdate() - timezone.timedelta(days=1)
+        set_base_stock(self.product, Decimal("10.00"), date_val=yesterday)
         use_stock(self.product, Decimal("4.00"), notes="Used in wash cycle")
         self.inventory.refresh_from_db()
         self.assertEqual(self.inventory.current_quantity, Decimal("6.00"))
@@ -332,8 +336,8 @@ class StockHistoryViewsTests(TestCase):
             low_stock_threshold=Decimal("2.00")
         )
 
-    def test_history_view_aggregation_and_uniqueness(self):
-        """History view groups product records so that each product appears exactly once."""
+    def test_history_view_uses_stock_history_not_current_inventory(self):
+        """The page is an audit trail and never synthesizes rows from Inventory."""
         from django.test.signals import template_rendered
         from unittest.mock import patch
         with patch.object(template_rendered, 'send') as mock_send:
@@ -344,7 +348,21 @@ class StockHistoryViewsTests(TestCase):
             response = self.client.get(reverse('inventory:history_laundry_supplies'))
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, "Fabric Softener Lavender")
-            self.assertContains(response, "Scent Booster Beads")
+            self.assertNotContains(response, "Scent Booster Beads")
+
+            # Deleting the audit trail must make the page empty without
+            # changing current inventory quantities.
+            self.inventory1.refresh_from_db()
+            stock_before_delete = self.inventory1.current_stock
+            StockHistory.objects.all().delete()
+            DailyInventory.objects.all().delete()
+            response = self.client.get(reverse('inventory:history_laundry_supplies'))
+            self.assertContains(response, "No history logs available for laundry supplies.")
+            self.inventory1.refresh_from_db()
+            self.assertEqual(self.inventory1.current_stock, stock_before_delete)
+
+            response = self.client.get(reverse('inventory:history_laundry_accessories'))
+            self.assertContains(response, "No history logs available for laundry accessories.")
 
     def test_detailed_product_history_view(self):
         """Detailed history view lists all logs for a specific product."""
@@ -452,9 +470,12 @@ class DailyInventoryHistoryLogicTests(TestCase):
         # Verify only 1 daily summary record exists for 2026-08-22
         self.assertEqual(DailyInventory.objects.filter(product=self.product, date=d).count(), 1)
         
-        # Verify multiple transactions logged in StockHistory for 2026-08-22
+        # Verify 3 stock history records exist for 2026-08-22 (not merged)
         history_count = StockHistory.objects.filter(product=self.product).count()
         self.assertEqual(history_count, 3)
+        sh = StockHistory.objects.filter(product=self.product).order_by('-created_at', '-id').first()
+        self.assertEqual(sh.new_quantity, Decimal("7.00"))
+        self.assertEqual(sh.remaining_percentage, Decimal("70.00"))
 
     def test_multi_day_history_isolation(self):
         """A stock change on a new date creates a new daily record and does not modify yesterday's."""
@@ -504,6 +525,18 @@ class DailyInventoryHistoryLogicTests(TestCase):
 
 class GoogleSheetsExportAndMonthFilterTests(TestCase):
     def setUp(self):
+        self.branch, _ = Branch.objects.get_or_create(
+            branch_code='OD3301LR-JGM',
+            defaults={'branch_name': 'Jagamara', 'active': True},
+        )
+        self.branch.branch_name = 'Jagamara'
+        self.branch.google_sheet_id = '1brVV0GHj-jI9A_ds_dFyiaQbGcqu2If6iboH6mok9tI'
+        self.branch.active = True
+        self.branch.save()
+        self.user = User.objects.create_user(username='history-exporter', password='password123')
+        EmployeeProfile.objects.create(user=self.user, branch=self.branch)
+        self.client.login(username='history-exporter', password='password123')
+        set_current_branch(self.branch)
         self.product = Product.objects.create(
             name="Ezzy",
             category="Laundry Supplies",
@@ -544,7 +577,11 @@ class GoogleSheetsExportAndMonthFilterTests(TestCase):
         self.assertNotContains(response, "2026-08-21")
 
     @patch('inventory.google_sheets.requests.post')
-    @patch.dict('os.environ', {'GOOGLE_APPS_SCRIPT_URL': 'http://test-apps-script.local/'})
+    @patch.dict('os.environ', {
+        'GOOGLE_APPS_SCRIPT_URL': 'http://test-apps-script.local/',
+        'GOOGLE_SHEETS_EXPORT_URL': 'http://test-apps-script.local/',
+        'APPS_SCRIPT_SECRET': 'test_secret_abc',
+    })
     def test_export_to_google_sheets_triggered(self, mock_post):
         """Export parameter in GET request invokes requests.post with formatted JSON payload."""
         url = reverse('inventory:history_laundry_supplies')
@@ -553,31 +590,45 @@ class GoogleSheetsExportAndMonthFilterTests(TestCase):
         from unittest.mock import MagicMock
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'success': True,
+            'spreadsheet_url': 'https://docs.google.com/spreadsheets/d/1brVV0GHj-jI9A_ds_dFyiaQbGcqu2If6iboH6mok9tI/edit',
+        }
         mock_post.return_value = mock_response
         
         # Request with export=google_sheets and filtered to August
         response = self.client.get(f"{url}?months=2026-08&export=google_sheets")
         self.assertEqual(response.status_code, 200)
         
-        # Verify requests.post was called once
-        mock_post.assert_called_once()
-        call_url, call_kwargs = mock_post.call_args
-        self.assertEqual(call_url[0], 'http://test-apps-script.local/')
+        # Verify requests.post was called twice (supplies and accessories)
+        self.assertEqual(mock_post.call_count, 2)
+        call_args_list = mock_post.call_args_list
         
-        # Verify payload format
-        json_payload = call_kwargs['json']
-        self.assertEqual(json_payload['category'], 'supplies')
-        self.assertEqual(len(json_payload['records']), 1)
-        record = json_payload['records'][0]
-        self.assertEqual(record['date'], '2026-08-21')
-        self.assertEqual(record['product'], 'Ezzy')
-        self.assertEqual(record['base_stock'], 10)
-        self.assertEqual(record['closing_stock'], 10)
-        self.assertEqual(record['remaining_percentage'], '100%')
-        self.assertEqual(record['status'], 'SUFFICIENT')
+        # Verify first call (supplies)
+        call_url_1, call_kwargs_1 = call_args_list[0]
+        self.assertEqual(call_url_1[0], 'http://test-apps-script.local/')
+        json_payload_1 = call_kwargs_1['json']
+        self.assertEqual(json_payload_1['category'], 'supplies')
+        self.assertEqual(json_payload_1['branch'], 'Jagamara')
+        self.assertEqual(json_payload_1['branch_id'], 'OD3301LR-JGM')
+        self.assertEqual(json_payload_1['spreadsheet_id'], '1brVV0GHj-jI9A_ds_dFyiaQbGcqu2If6iboH6mok9tI')
+        # Only records matching the selected month filter (August 2026) should be exported
+        self.assertEqual(len(json_payload_1['records']), 1)
+        
+        # Verify second call (accessories)
+        call_url_2, call_kwargs_2 = call_args_list[1]
+        self.assertEqual(call_url_2[0], 'http://test-apps-script.local/')
+        json_payload_2 = call_kwargs_2['json']
+        self.assertEqual(json_payload_2['category'], 'accessories')
+        self.assertEqual(json_payload_2['branch_id'], 'OD3301LR-JGM')
+        self.assertEqual(len(json_payload_2['records']), 0)
+
+        # Secret token must be present in every payload sent to Apps Script
+        self.assertEqual(json_payload_1['secret_token'], 'test_secret_abc')
+        self.assertEqual(json_payload_2['secret_token'], 'test_secret_abc')
         
         # Verify success toast message
-        self.assertContains(response, "Successfully exported 1 records to Google Sheets.")
+        self.assertContains(response, "Successfully exported August 2026 history to Jagamara Google Sheets.")
 
     def test_export_no_months_selected(self):
         """Exporting with no months selected returns a warning message."""
@@ -596,7 +647,10 @@ class GoogleSheetsExportAndMonthFilterTests(TestCase):
         self.assertContains(response, "No history records found for the selected months.")
 
     @patch('inventory.google_sheets.requests.post')
-    @patch.dict('os.environ', {'GOOGLE_APPS_SCRIPT_URL': 'http://test-apps-script.local/'})
+    @patch.dict('os.environ', {
+        'GOOGLE_APPS_SCRIPT_URL': 'http://test-apps-script.local/',
+        'APPS_SCRIPT_SECRET': 'test_secret_abc',
+    })
     def test_export_connection_failure(self, mock_post):
         """If requests.post raises an error, a user-friendly message is shown."""
         url = reverse('inventory:history_laundry_supplies')
@@ -607,7 +661,3 @@ class GoogleSheetsExportAndMonthFilterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Unable to connect to Google Sheets: Connection/Timeout error (Connection Refused)")
         self.assertNotContains(response, "Traceback")
-
-
-
-

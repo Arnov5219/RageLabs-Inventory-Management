@@ -21,6 +21,9 @@ SECRET_KEY = 'django-insecure-wyls@v9sz)s1v2e59449n)-#_co%g*q_eq42hm8gz25*8$pmab
 DEBUG = True
 
 ALLOWED_HOSTS = []
+import os
+
+GOOGLE_SHEETS_EXPORT_URL = os.getenv("GOOGLE_SHEETS_EXPORT_URL") or os.getenv("GOOGLE_APPS_SCRIPT_URL") or "https://script.google.com/macros/s/AKfycbxUQchzN4FB0KhqPxP5duzplvlA9Ylk-8jR7yUGipLXB-u-R3dZtCvIuIhWq0BORG2f/exec"
 
 
 # Application definition
@@ -41,6 +44,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'inventory.middleware.BranchMiddleware',
+    'inventory.middleware.LoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -58,6 +63,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'inventory.context_processors.branch_context',
             ],
         },
     },
@@ -99,9 +105,27 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
+# Add testing flag if needed, but not required since sys.argv check is used
+# Email configuration — reads from .env; falls back to console backend if no host configured
+_email_host = os.getenv('EMAIL_HOST', '')
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if _email_host
+    else os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+)
+EMAIL_HOST = _email_host
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@laundryrage.com')
+# Recipient for low-stock RED alert emails
+ADMIN_ALERT_EMAIL = os.getenv('ADMIN_ALERT_EMAIL', 'admin@laundryrage.com')
+
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "Asia/Kolkata"
+USE_TZ = True
 
 USE_I18N = True
 
