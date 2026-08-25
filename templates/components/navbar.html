@@ -4,8 +4,15 @@
         <a href="{% url 'inventory:dashboard' %}" class="logo" id="logo-brand">
             <img src="{% static 'images/logo.png' %}" alt="LaundryRage">
         </a>
+        
+        <button class="nav-toggle" id="nav-toggle-btn" aria-label="Toggle navigation" aria-expanded="false">
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+        </button>
+
+        <ul class="nav-links" id="nav-links-menu">
         {% if not user.is_superuser %}
-        <ul class="nav-links" style="display: flex; align-items: center; gap: 2rem; list-style: none; margin: 0; padding: 0;">
             <li>
                 <a href="{% url 'inventory:dashboard' %}" id="nav-dashboard" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                     Dashboard
@@ -27,7 +34,7 @@
                     {% if request.user.is_superuser or request.user.is_staff %}
                         <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Branch:</span>
                         <select onchange="window.location.href='{% url 'inventory:switch_branch' %}?branch_id=' + this.value" 
-                                style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: var(--text-primary); padding: 0.35rem 0.75rem; font-family: var(--font-body); font-size: 0.85rem; outline: none; cursor: pointer; transition: all 0.3s ease;">
+                                class="branch-select-navbar">
                             <option value="all" {% if not request.session.selected_branch_id %}selected{% endif %}>All Branches</option>
                             {% for b in all_branches %}
                                 <option value="{{ b.id }}" {% if request.session.selected_branch_id == b.id %}selected{% endif %}>{{ b.branch_name }}</option>
@@ -55,3 +62,18 @@
         </ul>
     </nav>
 </header>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const navToggle = document.getElementById('nav-toggle-btn');
+        const navLinks = document.getElementById('nav-links-menu');
+        if (navToggle && navLinks) {
+            navToggle.addEventListener('click', () => {
+                navToggle.classList.toggle('open');
+                navLinks.classList.toggle('active');
+                const expanded = navToggle.getAttribute('aria-expanded') === 'true' || false;
+                navToggle.setAttribute('aria-expanded', !expanded);
+            });
+        }
+    });
+</script>

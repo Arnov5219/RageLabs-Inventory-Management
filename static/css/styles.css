@@ -6,13 +6,24 @@
     --surface-hover: #F1F5F9;
     --border-color: #E2E8F0;
 
-    --accent-gold: #D97706;
-    --accent-gold-hover: #B45309;
+    --accent-gold: #C8860A; /* Warm mustard gold */
+    --accent-gold-hover: #A56D05;
+    
+    --accent-mustard: #EAB308;
+    --accent-mustard-hover: #CA8A04;
+    --accent-mustard-bg: #FEF9C3;
+    --accent-mustard-light: #FEF08A;
+
+    --accent-blue: #2563EB;
+    --accent-red: #DC2626;
+    --accent-orange: #EA580C;
+    --accent-green: #059669;
+    --accent-dark: #1E293B;
 
     --status-low: #DC2626;
     --status-low-bg: #FEE2E2;
-    --status-mod: #D97706;
-    --status-mod-bg: #FEF3C7;
+    --status-mod: #C8860A;
+    --status-mod-bg: #FEF9C3;
     --status-suff: #059669;
     --status-suff-bg: #D1FAE5;
 
@@ -28,6 +39,7 @@
     --radius-grid: 20px;
 
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
     --shadow-premium: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
     --shadow-premium-hover: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
 }
@@ -1337,3 +1349,560 @@ footer {
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
+
+/* ==========================================================================
+   UI/UX UPGRADE ADDITIONS
+   ========================================================================== */
+
+/* Redesigned Login Page Styles */
+.login-page-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 75vh;
+    padding: 2.5rem 0;
+    position: relative;
+    z-index: 1;
+}
+
+.login-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 3rem;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 
+                0 8px 10px -6px rgba(15, 23, 42, 0.05), 
+                0 20px 40px -10px rgba(0, 0, 0, 0.02);
+    animation: loginFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    z-index: 2;
+}
+
+@keyframes loginFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-header-title {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--text-primary), var(--accent-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.login-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.login-form-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: block;
+}
+
+.login-input-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.login-input {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    transition: var(--transition-smooth);
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+}
+
+.login-input:hover {
+    border-color: var(--text-muted);
+}
+
+.login-input:focus {
+    border-color: var(--accent-mustard);
+    background-color: var(--surface-card);
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
+}
+
+.login-input.has-toggle {
+    padding-right: 2.75rem;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0.75rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-smooth);
+    border-radius: 6px;
+    z-index: 5;
+}
+
+.password-toggle-btn:hover {
+    color: var(--text-secondary);
+    background-color: var(--surface-hover);
+}
+
+.login-btn {
+    width: 100%;
+    padding: 0.9rem;
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent-gold), var(--accent-mustard));
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 12px rgba(200, 134, 10, 0.2);
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(200, 134, 10, 0.35);
+    background: linear-gradient(135deg, var(--accent-gold-hover), var(--accent-mustard-hover));
+}
+
+.login-btn:active {
+    transform: translateY(0);
+}
+
+.login-error-card {
+    background: rgba(220, 38, 38, 0.05);
+    border: 1px solid rgba(220, 38, 38, 0.15);
+    border-radius: 10px;
+    padding: 0.9rem;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
+.login-error-text {
+    color: var(--accent-red);
+    font-size: 0.88rem;
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.login-admin-link {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: var(--transition-smooth);
+    display: inline-block;
+}
+
+.login-admin-link:hover {
+    color: var(--accent-gold);
+}
+
+/* Ambient glows for visual depth behind login card */
+.login-glow {
+    position: absolute;
+    width: 350px;
+    height: 350px;
+    border-radius: 50%;
+    filter: blur(50px);
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.login-glow-1 {
+    background: radial-gradient(circle, rgba(234, 179, 8, 0.12) 0%, rgba(200, 134, 10, 0.02) 70%, transparent 100%);
+    top: 10%;
+    left: 25%;
+    animation: floatGlow1 20s infinite alternate ease-in-out;
+}
+
+.login-glow-2 {
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.06) 0%, rgba(37, 99, 235, 0.01) 70%, transparent 100%);
+    bottom: 10%;
+    right: 25%;
+    animation: floatGlow2 25s infinite alternate ease-in-out;
+}
+
+@keyframes floatGlow1 {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(30px, -40px) scale(1.1); }
+}
+
+@keyframes floatGlow2 {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(-40px, 30px) scale(1.15); }
+}
+
+/* Thin background animated lines */
+.bg-animated-lines {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.bg-line {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, rgba(200, 134, 10, 0.06), transparent);
+    height: 1px;
+    width: 100%;
+    left: 0;
+    animation: slideLine 8s infinite linear;
+}
+
+.bg-line:nth-child(1) { top: 25%; animation-duration: 12s; animation-delay: -2s; }
+.bg-line:nth-child(2) { top: 50%; animation-duration: 15s; animation-delay: -7s; }
+.bg-line:nth-child(3) { top: 75%; animation-duration: 10s; animation-delay: -4s; }
+
+@keyframes slideLine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Branch Selector styling for Navbar (Light theme) */
+.branch-select-navbar {
+    background-color: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 0.4rem 2rem 0.4rem 0.75rem;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 0.85rem;
+}
+
+.branch-select-navbar:hover {
+    border-color: var(--text-muted);
+    background-color: var(--surface-hover);
+}
+
+.branch-select-navbar:focus {
+    border-color: var(--accent-mustard);
+    box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15);
+}
+
+/* Keyboard Focus Accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent-mustard) !important;
+    outline-offset: 2px !important;
+}
+
+/* Refinement to portal action color and card link to match accent system */
+.portal-action, .portal-card-premium .card-action-link {
+    color: var(--accent-gold) !important;
+}
+
+/* Smooth modal scaling entrance animation */
+.modal-overlay.active .modal-content {
+    animation: modalScaleEntrance 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalScaleEntrance {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Micro-interactions: Table Row Hover styling */
+tr.branch-row:hover, tr.history-row:hover td {
+    background-color: rgba(200, 134, 10, 0.03) !important;
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS AND DRAWERS
+   ========================================================================== */
+
+/* Mobile Navigation Hamburger button styles */
+.nav-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 24px;
+    height: 18px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 150;
+    outline: none;
+}
+
+.nav-toggle-bar {
+    width: 100%;
+    height: 2px;
+    background-color: var(--text-primary);
+    transition: var(--transition-smooth);
+    transform-origin: left center;
+}
+
+/* Mobile styles below 768px */
+@media (max-width: 768px) {
+    .nav-toggle {
+        display: flex;
+    }
+
+    .nav-links {
+        position: fixed;
+        top: 72px; /* standard sticky height */
+        right: -100%;
+        width: 280px;
+        height: calc(100vh - 72px);
+        background-color: var(--surface-card);
+        border-left: 1px solid var(--border-color);
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 2.5rem 2rem !important;
+        gap: 1.5rem !important;
+        transition: var(--transition-smooth);
+        box-shadow: -4px 10px 15px -3px rgba(0, 0, 0, 0.05);
+        z-index: 140;
+        overflow-y: auto;
+    }
+
+    .nav-links.active {
+        right: 0;
+    }
+
+    .nav-links li {
+        width: 100%;
+        display: flex !important;
+        align-items: center;
+    }
+
+    .nav-links a {
+        display: block;
+        width: 100%;
+        padding: 0.75rem 1rem !important;
+        border-radius: 8px !important;
+    }
+
+    .branch-select-navbar {
+        width: 100%;
+        margin-top: 0.25rem;
+    }
+
+    .nav-toggle.open .nav-toggle-bar:nth-child(1) {
+        transform: rotate(45deg) translate(1px, -1px);
+    }
+    .nav-toggle.open .nav-toggle-bar:nth-child(2) {
+        opacity: 0;
+        transform: scale(0);
+    }
+    .nav-toggle.open .nav-toggle-bar:nth-child(3) {
+        transform: rotate(-45deg) translate(1px, 1px);
+    }
+}
+
+/* Table-to-Card Stacked layouts below 600px */
+@media (max-width: 600px) {
+    .table-overview,
+    .table-attention,
+    .table-history,
+    .table-product-detail,
+    .table-overview tbody,
+    .table-attention tbody,
+    .table-history tbody,
+    .table-product-detail tbody,
+    .table-overview tr,
+    .table-attention tr,
+    .table-history tr,
+    .table-product-detail tr,
+    .table-overview td,
+    .table-attention td,
+    .table-history td,
+    .table-product-detail td {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    .table-overview thead,
+    .table-attention thead,
+    .table-history thead,
+    .table-product-detail thead {
+        display: none !important;
+    }
+
+    .table-overview tr,
+    .table-attention tr,
+    .table-history tr,
+    .table-product-detail tr {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        padding: 1rem !important;
+        background: var(--surface-card);
+        box-shadow: var(--shadow-sm);
+        position: relative;
+    }
+
+    .table-overview td,
+    .table-attention td,
+    .table-history td,
+    .table-product-detail td {
+        border: none !important;
+        border-bottom: 1px solid var(--surface-hover) !important;
+        position: relative;
+        padding: 0.75rem 0.5rem 0.75rem 50% !important;
+        text-align: right !important;
+        font-size: 0.9rem;
+        min-height: 2.75rem;
+        display: flex !important;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .table-overview td:last-child,
+    .table-attention td:last-child,
+    .table-history td:last-child,
+    .table-product-detail td:last-child {
+        border-bottom: none !important;
+    }
+
+    .table-overview td::before,
+    .table-attention td::before,
+    .table-history td::before,
+    .table-product-detail td::before {
+        position: absolute;
+        top: 50%;
+        left: 0.5rem;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: 700;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    /* Labels for Branch Overview Table */
+    .table-overview td:nth-of-type(1)::before { content: "Branch"; }
+    .table-overview td:nth-of-type(2)::before { content: "RED Alerts"; }
+    .table-overview td:nth-of-type(3)::before { content: "YELLOW Alerts"; }
+    .table-overview td:nth-of-type(4)::before { content: "GREEN Alerts"; }
+    .table-overview td:nth-of-type(5)::before { content: "Refill Required"; }
+
+    /* Labels for Attention Required Table */
+    .table-attention td:nth-of-type(1)::before { content: "Branch"; }
+    .table-attention td:nth-of-type(2)::before { content: "Product"; }
+    .table-attention td:nth-of-type(3)::before { content: "Current Stock"; }
+    .table-attention td:nth-of-type(4)::before { content: "Base Stock"; }
+    .table-attention td:nth-of-type(5)::before { content: "Status"; }
+    .table-attention td:nth-of-type(6)::before { content: "Refill Needed"; }
+
+    /* Labels for History Table */
+    .table-history td:nth-of-type(1)::before { content: "Date"; }
+    .table-history td:nth-of-type(2)::before { content: "Product"; }
+    .table-history td:nth-of-type(3)::before { content: "Base Stock"; }
+    .table-history td:nth-of-type(4)::before { content: "Closing Stock"; }
+    .table-history td:nth-of-type(5)::before { content: "Remaining %"; }
+    .table-history td:nth-of-type(6)::before { content: "Status"; }
+
+    /* Labels for Product Detail History Table */
+    .table-product-detail td:nth-of-type(1)::before { content: "Date & Time"; }
+    .table-product-detail td:nth-of-type(2)::before { content: "Action"; }
+    .table-product-detail td:nth-of-type(3)::before { content: "Change Qty"; }
+    .table-product-detail td:nth-of-type(4)::before { content: "Before"; }
+    .table-product-detail td:nth-of-type(5)::before { content: "After"; }
+    .table-product-detail td:nth-of-type(6)::before { content: "Base Stock"; }
+    .table-product-detail td:nth-of-type(7)::before { content: "Remaining %"; }
+    .table-product-detail td:nth-of-type(8)::before { content: "Notes"; }
+}
+
+@media (max-width: 480px) {
+    .product-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1.25rem !important;
+    }
+    
+    .login-card {
+        padding: 2.25rem 1.5rem !important;
+        margin: 0 1rem;
+    }
+    
+    .metrics-container {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    .modal-content {
+        padding: 1.5rem !important;
+        width: 95% !important;
+    }
+
+    .modal-actions {
+        flex-direction: column-reverse !important;
+        gap: 0.75rem !important;
+    }
+
+    .modal-actions button {
+        width: 100% !important;
+        height: 2.75rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+}
+
+/* Accessibility: Support prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-delay: -1ms !important;
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        background-attachment: initial !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+    }
+}
+

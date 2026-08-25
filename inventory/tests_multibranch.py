@@ -175,10 +175,11 @@ class MultiBranchTestCase(TestCase):
         
         # This will call set_base_stock which creates StockHistory and triggers Google Sheets sync
         # Since mock_post raises Timeout, set_base_stock should consume the error and finish successfully!
-        try:
-            set_base_stock(self.product, Decimal('100.00'))
-        except Exception as e:
-            self.fail(f"set_base_stock raised exception {e} when Google Sheets sync failed!")
+        with mock.patch.dict('os.environ', {'APPS_SCRIPT_SECRET': 'test_secret_123'}):
+            try:
+                set_base_stock(self.product, Decimal('100.00'))
+            except Exception as e:
+                self.fail(f"set_base_stock raised exception {e} when Google Sheets sync failed!")
             
         # Verify inventory was updated in DB
         inv = Inventory.objects.get(product=self.product, branch=self.branch_jgm)

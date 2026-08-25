@@ -225,7 +225,7 @@
     Branch Overview
 </h2>
 <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
-    <table style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
+    <table class="table-overview" style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
         <thead>
             <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-weight: 700;">
                 <th style="padding: 1rem 0.5rem;">Branch</th>
@@ -272,7 +272,7 @@
 </div>
 <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
     {% if has_attention %}
-    <table style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
+    <table class="table-attention" style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
         <thead>
             <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-weight: 700;">
                 <th style="padding: 1rem 0.5rem;">Branch</th>
@@ -319,6 +319,19 @@
     <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem;">
         <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Total Stock</span>
         <span style="font-size: 2rem; font-weight: 800; color: var(--text-primary);">{{ total_stock|floatformat:"0" }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 500;">units</span></span>
+    </div>
+    <div id="summary-card-immediate" style="background: rgba(220, 38, 38, 0.04); border: 1px solid rgba(220, 38, 38, 0.15); border-left: 5px solid var(--status-low); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem; cursor: pointer; transition: var(--transition-smooth);"
+         onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-premium)';"
+         onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)';"
+         onclick="openDetailsModal('low-stock-modal')">
+        <span style="font-size: 0.82rem; font-weight: 700; color: var(--status-low); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.35rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Immediate Required
+        </span>
+        <span style="font-size: 2rem; font-weight: 800; color: var(--status-low);">
+            {{ immediate_refill_units|floatformat:"0" }} <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 500;">unit{% if immediate_refill_units != 1 %}s{% endif %}</span>
+        </span>
+        <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Units need immediate restocking</span>
     </div>
     <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem;">
         <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Refill Required</span>

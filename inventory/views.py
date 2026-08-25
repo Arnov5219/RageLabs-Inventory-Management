@@ -271,6 +271,8 @@ def dashboard_view(request):
     attention_display = attention_items[:5]
     has_attention = len(attention_items) > 0
     
+    immediate_refill_units = sum(item['required_refill'] for item in low_supplies + low_accessories)
+
     if is_all_branches:
         latest_update = Inventory.objects.filter(branch__active=True).order_by('-updated_at').first()
     else:
@@ -285,6 +287,7 @@ def dashboard_view(request):
         'low_count': low_count,
         'mod_count': mod_count,
         'suff_count': suff_count,
+        'immediate_refill_units': immediate_refill_units,
         
         'low_supplies': low_supplies,
         'low_accessories': low_accessories,
