@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Product, Inventory, MonthlyInventory, StockHistory, Branch, EmployeeProfile, SheetSyncLog
+from .models import Product, Inventory, MonthlyInventory, StockHistory, Branch, EmployeeProfile, SheetSyncLog, InventoryRefillRequest, InventoryRefillRequestItem
 
 class EmployeeProfileInline(admin.StackedInline):
     model = EmployeeProfile
@@ -45,3 +45,17 @@ class SheetSyncLogAdmin(admin.ModelAdmin):
     list_display = ('branch', 'history_record', 'status', 'attempt_count', 'last_attempt', 'synced_at')
     list_filter = ('status', 'branch')
     search_fields = ('branch__branch_name', 'error_message')
+
+class InventoryRefillRequestItemInline(admin.TabularInline):
+    model = InventoryRefillRequestItem
+    extra = 0
+    readonly_fields = ('product', 'category', 'current_stock', 'base_stock', 'remaining_percentage', 'refill_required')
+
+@admin.register(InventoryRefillRequest)
+class InventoryRefillRequestAdmin(admin.ModelAdmin):
+    list_display = ('branch', 'branch_code', 'requested_by', 'requested_at', 'status', 'email_sent')
+    list_filter = ('status', 'branch', 'email_sent')
+    search_fields = ('branch__branch_name', 'requested_by__username')
+    readonly_fields = ('requested_at', 'email_sent')
+    inlines = [InventoryRefillRequestItemInline]
+    ordering = ('-requested_at',)

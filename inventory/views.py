@@ -12,9 +12,10 @@ from django.utils.safestring import mark_safe
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.forms import AuthenticationForm
 
-from .models import Product, Inventory, StockHistory, DailyInventory, Branch
+from .models import Product, Inventory, StockHistory, DailyInventory, Branch, InventoryRefillRequest, InventoryRefillRequestItem
 from .helpers import add_stock, use_stock, edit_stock, set_base_stock
 from .google_sheets import export_to_google_sheets
+from django.core.mail import EmailMultiAlternatives
 
 def history_spreadsheet_id(branch):
     """Return the approved spreadsheet for the active branch only."""
@@ -598,47 +599,179 @@ def adjust_stock_ajax(request):
         'base_stock': str(monthly_inv.base_stock) if monthly_inv else "0"
     })
 
-
 @require_POST
 def request_refill_ajax(request):
-    import os
-    import requests
-    from django.http import JsonResponse
-    
+    """Handle a batch manual refill request from the Low Stock modal.
+
+    - Collects all RED/OUT_OF_STOCK items for the selected branch.
+    - Creates an InventoryRefillRequest batch record in the database.
+    - Creates associated InventoryRefillRequestItem records.
+    - Sends a single email to ADMIN_ALERT_EMAIL via Django SMTP directly.
+    - Blocks duplicate PENDING requests containing the same set of products.
+    """
+    import logging
+    from django.conf import settings
+    from django.db import transaction
+    logger = logging.getLogger(__name__)
+
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required.'}, status=401)
-        
-    if not (request.user.is_superuser or request.user.is_staff):
-        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
-        
-    url = os.environ.get('GOOGLE_APPS_SCRIPT_URL')
-    secret = os.environ.get('APPS_SCRIPT_SECRET')
-    
-    if url:
-        url = url.strip().strip('"').strip("'")
-    if secret:
-        secret = secret.strip().strip('"').strip("'")
-        
-    if not url:
-        return JsonResponse({'success': False, 'error': 'GOOGLE_APPS_SCRIPT_URL is not configured.'}, status=500)
-    if not secret:
-        return JsonResponse({'success': False, 'error': 'APPS_SCRIPT_SECRET is not configured.'}, status=500)
-        
-    payload = {
-        "action": "request_refill",
-        "secret_token": secret
-    }
-    
+
+    branch = getattr(request, 'current_branch', None)
+    if not branch:
+        return JsonResponse({'success': False, 'error': 'No active branch selected.'}, status=400)
+
+    # Fetch all RED/OUT_OF_STOCK products for this branch
+    low_items = Inventory.objects.filter(
+        branch=branch,
+        product__is_active=True,
+        alert_status__in=['RED', 'OUT_OF_STOCK']
+    ).select_related('product')
+
+    if not low_items.exists():
+        return JsonResponse({'success': False, 'error': 'No products currently require refill.'})
+
+    curr_pids = [item.product.id for item in low_items]
+
+    # Duplicate check for this employee/branch/current-red-products
+    if InventoryRefillRequest.has_pending_duplicate(branch, request.user, curr_pids):
+        return JsonResponse({'success': False, 'error': 'Refill request already submitted.', 'duplicate': True})
+
+    recipient = getattr(settings, 'ADMIN_ALERT_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', None)
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'alerts@laundryrage.com')
+
+    if not recipient:
+        logger.warning('[REFILL REQUEST] ADMIN_ALERT_EMAIL not configured — returning error.')
+        return JsonResponse({'success': False, 'error': 'Admin email is not configured. Unable to send refill request.'}, status=500)
+
     try:
-        response = requests.post(url, json=payload, timeout=15)
-        response.raise_for_status()
-        res_data = response.json()
-        if res_data.get('success'):
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'error': res_data.get('error', 'Unknown Apps Script error')})
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Failed to request refill from Apps Script Web App: {e}")
-        return JsonResponse({'success': False, 'error': f"Failed to connect to Google Apps Script: {str(e)}"}, status=500)
+        with transaction.atomic():
+            refill_req = InventoryRefillRequest.objects.create(
+                branch=branch,
+                branch_code=branch.branch_code,
+                requested_by=request.user,
+                status=InventoryRefillRequest.STATUS_PENDING,
+            )
+
+            # Insert all request items
+            items_list = []
+            for inv in low_items:
+                rem_percentage = (inv.current_stock / inv.base_stock * 100) if inv.base_stock > 0 else Decimal('0.00')
+                item = InventoryRefillRequestItem.objects.create(
+                    request=refill_req,
+                    product=inv.product,
+                    category=inv.product.category,
+                    current_stock=inv.current_stock,
+                    base_stock=inv.base_stock,
+                    remaining_percentage=rem_percentage,
+                    refill_required=inv.required_refill
+                )
+                items_list.append(item)
+
+            now_str = timezone.localtime(refill_req.requested_at).strftime('%Y-%m-%d %H:%M:%S')
+            user_email = request.user.email if request.user.email else "Not provided"
+
+            # Construct Email Body
+            subject = f"Inventory Refill Request - {branch.branch_name}"
+
+            product_lines = []
+            html_rows = []
+            for item in items_list:
+                product_lines.append(
+                    f"Product: {item.product.name}\n"
+                    f"Category: {item.category}\n"
+                    f"Current Stock: {item.current_stock:.0f}\n"
+                    f"Base Stock: {item.base_stock:.0f}\n"
+                    f"Remaining: {item.remaining_percentage:.0f}%\n"
+                    f"Refill Required: {item.refill_required:.0f}"
+                )
+                html_rows.append(f"""
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px; font-weight: bold;">{item.product.name}</td>
+                    <td style="padding: 8px;">{item.category}</td>
+                    <td style="padding: 8px; text-align: right;">{item.current_stock:.0f}</td>
+                    <td style="padding: 8px; text-align: right;">{item.base_stock:.0f}</td>
+                    <td style="padding: 8px; text-align: right;">{item.remaining_percentage:.0f}%</td>
+                    <td style="padding: 8px; text-align: right; color: #ef4444; font-weight: bold;">{item.refill_required:.0f}</td>
+                </tr>
+                """)
+
+            products_text = "\n\n".join(product_lines)
+            text_body = (
+                f"Refill Request\n\n"
+                f"Requested by:\n{request.user.username}\n\n"
+                f"Employee email:\n{user_email}\n\n"
+                f"Branch:\n{branch.branch_name}\n\n"
+                f"Branch Code:\n{branch.branch_code}\n\n"
+                f"Requested at:\n{now_str}\n\n"
+                f"Products requiring refill:\n\n"
+                f"------------------------------------------------\n\n"
+                f"{products_text}\n\n"
+                f"------------------------------------------------\n\n"
+                f"Total products requiring refill: {len(items_list)}\n"
+            )
+
+            html_rows_str = "".join(html_rows)
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                <h2 style="color: #d97706; margin-top: 0;">&#128230; Refill Request</h2>
+                <p>A manual batch refill request has been submitted by an employee.</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+                    <tr>
+                        <td style="padding: 6px 0; font-weight: bold; width: 30%;">Requested by:</td>
+                        <td style="padding: 6px 0;">{request.user.username}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; font-weight: bold;">Employee email:</td>
+                        <td style="padding: 6px 0;">{user_email}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; font-weight: bold;">Branch:</td>
+                        <td style="padding: 6px 0;">{branch.branch_name} ({branch.branch_code})</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; font-weight: bold;">Requested at:</td>
+                        <td style="padding: 6px 0;">{now_str}</td>
+                    </tr>
+                </table>
+                <h3 style="border-bottom: 2px solid #d97706; padding-bottom: 5px;">Products requiring refill:</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #fafafa; border-bottom: 2px solid #eee;">
+                            <th style="padding: 8px; text-align: left;">Product</th>
+                            <th style="padding: 8px; text-align: left;">Category</th>
+                            <th style="padding: 8px; text-align: right;">Current</th>
+                            <th style="padding: 8px; text-align: right;">Base</th>
+                            <th style="padding: 8px; text-align: right;">Remaining</th>
+                            <th style="padding: 8px; text-align: right;">Refill</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {html_rows_str}
+                    </tbody>
+                </table>
+                <p style="margin-top: 20px; font-weight: bold;">Total products requiring refill: {len(items_list)}</p>
+            </div>
+            """
+
+            # Send email
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_body,
+                from_email=from_email,
+                to=[recipient],
+            )
+            email.attach_alternative(html_body, 'text/html')
+            email.send(fail_silently=False)
+
+            # Mark request as sent
+            refill_req.email_sent = True
+            refill_req.save(update_fields=['email_sent'])
+
+        logger.info(f'[REFILL REQUEST] Batch email sent for branch {branch.branch_code} to {recipient}')
+        return JsonResponse({'success': True, 'message': 'Refill request sent to admin successfully.'})
+
+    except Exception as exc:
+        logger.error(f'[REFILL REQUEST] Failed to send refill email or save request: {exc}')
+        return JsonResponse({'success': False, 'error': 'Unable to send refill request. Please try again.'}, status=500)
+

@@ -454,6 +454,7 @@ class SheetSyncLog(models.Model):
         return f"Sync Log #{self.id} - {self.branch.branch_code} - {self.status}"
 
 
+
 class InventoryAlert(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='alerts')
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='alerts', null=True, blank=True)
@@ -471,4 +472,69 @@ class InventoryAlert(models.Model):
         branch_code = self.branch.branch_code if self.branch else "Global"
         return f"Alert for {self.product.name} ({branch_code}) - {self.current_status} (Refill: {self.refill_required})"
 
+
+class InventoryRefillRequest(models.Model):
+    """Tracks manual refill requests submitted by staff from the Low Stock modal."""
+
+    STATUS_PENDING   = "PENDING"
+    STATUS_APPROVED  = "APPROVED"
+    STATUS_COMPLETED = "COMPLETED"
+    STATUS_CANCELLED = "CANCELLED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING,   "Pending"),
+        (STATUS_APPROVED,  "Approved"),
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    branch          = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="refill_requests", null=True, blank=True)
+    branch_code     = models.CharField(max_length=50, blank=True, default="")
+    requested_by    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="refill_requests")
+    requested_at    = models.DateTimeField(default=timezone.now)
+    status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    email_sent      = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-requested_at"]
+        verbose_name = "Inventory Refill Request"
+        verbose_name_plural = "Inventory Refill Requests"
+
+    def __str__(self):
+        branch_code = self.branch.branch_code if self.branch else (self.branch_code or "Global")
+        user = self.requested_by.username if self.requested_by else "Unknown"
+        return f"Refill Batch [{self.status}] @ {branch_code} by {user} at {self.requested_at}"
+
+    @classmethod
+    def has_pending_duplicate(cls, branch, user, current_product_ids):
+        """
+        Check if there's a PENDING request by this user for this branch
+        containing exactly the same set of product IDs.
+        """
+        target_set = set(current_product_ids)
+        pending_requests = cls.objects.filter(
+            branch=branch,
+            requested_by=user,
+            status=cls.STATUS_PENDING
+        )
+        for req in pending_requests:
+            req_pids = set(req.items.values_list('product_id', flat=True))
+            if req_pids == target_set:
+                return True
+        return False
+
+
+class InventoryRefillRequestItem(models.Model):
+    """Represents an individual low-stock item requested in a batch refill request."""
+
+    request              = models.ForeignKey(InventoryRefillRequest, on_delete=models.CASCADE, related_name="items")
+    product              = models.ForeignKey(Product, on_delete=models.CASCADE)
+    category             = models.CharField(max_length=100)
+    current_stock        = models.DecimalField(max_digits=10, decimal_places=2)
+    base_stock           = models.DecimalField(max_digits=10, decimal_places=2)
+    remaining_percentage = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    refill_required      = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.product.name} ({self.refill_required} units)"
 

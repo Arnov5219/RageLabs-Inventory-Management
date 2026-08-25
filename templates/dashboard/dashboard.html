@@ -6,21 +6,76 @@
 {% block content %}
 <!-- Custom Style overrides for Dashboard -->
 <style>
-    .metric-card {
-        background: var(--surface-card);
-        border: 1px solid var(--border-color);
+    .metrics-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+    @media (max-width: 992px) {
+        .metrics-container {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+    }
+    .metric-summary-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 1.5rem;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        cursor: pointer;
     }
-    .metric-card:hover {
+    .metric-summary-card:hover {
         transform: translateY(-4px);
-        box-shadow: var(--shadow-md);
-        border-color: rgba(56, 189, 248, 0.4);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    }
+    .metric-summary-card.low-stock {
+        border-left: 5px solid #dc2626; /* red */
+    }
+    .metric-summary-card.moderate-stock {
+        border-left: 5px solid #ea580c; /* orange */
+    }
+    .metric-summary-card.sufficient-stock {
+        border-left: 5px solid #059669; /* green */
+    }
+    .metric-summary-card .card-title {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+    .metric-summary-card .card-value {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: baseline;
+        gap: 0.25rem;
+    }
+    .metric-summary-card.low-stock .card-value {
+        color: #dc2626;
+    }
+    .metric-summary-card.moderate-stock .card-value {
+        color: #ea580c;
+    }
+    .metric-summary-card.sufficient-stock .card-value {
+        color: #059669;
+    }
+    .metric-summary-card .card-value-label {
+        font-size: 1rem;
+        color: #475569;
+        font-weight: 600;
+    }
+    .metric-summary-card .card-desc {
+        font-size: 0.9rem;
+        color: #94a3b8;
+        font-weight: 500;
     }
     .branch-row {
         cursor: pointer;
@@ -29,72 +84,89 @@
     .branch-row:hover {
         background-color: var(--surface-hover) !important;
     }
-    .portal-card {
-        background: var(--surface-card);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+    
+    /* Portal card styles */
+    .portal-grid-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 4rem;
+    }
+    @media (max-width: 768px) {
+        .portal-grid-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    .portal-card-premium {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
         overflow: hidden;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         text-decoration: none;
         transition: all 0.3s ease;
         display: flex;
         flex-direction: column;
+        height: 100%;
     }
-    .portal-card:hover {
+    .portal-card-premium:hover {
         transform: translateY(-4px);
-        box-shadow: var(--shadow-md);
-        border-color: rgba(56, 189, 248, 0.3);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        border-color: #cbd5e1;
     }
-    .portal-image {
-        height: 160px;
+    .portal-card-premium .card-image-wrap {
+        height: 220px;
         overflow: hidden;
         position: relative;
     }
-    .portal-image img {
+    .portal-card-premium .card-image-wrap img {
         width: 100%;
         height: 100%;
         object-fit: cover;
         transition: transform 0.5s ease;
     }
-    .portal-card:hover .portal-image img {
-        transform: scale(1.06);
+    .portal-card-premium:hover .card-image-wrap img {
+        transform: scale(1.04);
     }
-    .portal-content {
+    .portal-card-premium .card-info-wrap {
         padding: 1.5rem;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.75rem;
         flex-grow: 1;
     }
-    .portal-title {
+    .portal-card-premium .card-heading-title {
         font-family: var(--font-heading);
-        font-size: 1.25rem;
+        font-size: 1.35rem;
         font-weight: 800;
-        color: var(--text-primary);
+        color: #0f172a;
         margin: 0;
     }
-    .portal-desc {
-        font-size: 0.88rem;
-        color: var(--text-secondary);
-        line-height: 1.4;
-        margin-bottom: 1rem;
+    .portal-card-premium .card-text-description {
+        font-size: 0.92rem;
+        color: #475569;
+        line-height: 1.5;
+        margin: 0;
     }
-    .portal-action {
+    .portal-card-premium .card-action-link {
         margin-top: auto;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         font-weight: 700;
-        color: var(--accent-blue);
+        color: #ea580c;
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        padding-top: 1rem;
     }
 </style>
 
 <!-- Page Header Area -->
 <div class="page-title-area" style="margin-bottom: 2.5rem;">
     <div>
-        <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--text-primary); margin: 0;">Inventory Dashboard</h1>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+        <h1 style="font-family: var(--font-heading); font-size: 2.5rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.025em;">
+            Inventory Dashboard
+        </h1>
+        <p style="color: #475569; font-size: 1rem; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
             {% if request.user.is_superuser or request.user.is_staff %}
                 {% if is_all_branches %}
                     🌐 All Branches
@@ -104,81 +176,45 @@
             {% else %}
                 📍 {{ active_branch.branch_name }}
             {% endif %}
-            <span style="color: var(--border-color);">&middot;</span>
-            <span style="color: var(--text-muted); font-weight: 500;">Updated {{ latest_time }}</span>
+            <span style="color: #cbd5e1;">&middot;</span>
+            <span style="color: #94a3b8; font-weight: 500;">Updated {{ latest_time }}</span>
         </p>
     </div>
 </div>
 
 <!-- Metrics Row -->
-<div class="metrics-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+<div class="metrics-container">
     <!-- Low Stock Card -->
-    <div class="metric-card low" id="metric-card-low" style="cursor: pointer;">
+    <div class="metric-summary-card low-stock" id="metric-card-low">
         <div>
-            <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🔴 Low Stock Alert</h3>
-            <div class="metric-value low" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-red); display: flex; align-items: baseline;">
-                {{ low_count }}
-                <span style="font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; margin-left: 0.25rem;">Product{% if low_count != 1 %}s{% endif %}</span>
+            <div class="card-title">Low Stock Alert</div>
+            <div class="card-value">
+                {{ low_count }} <span class="card-value-label">Product{% if low_count != 1 %}s{% endif %}</span>
             </div>
-            <div class="metric-label" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;">
-                {% if request.user.is_superuser or request.user.is_staff %}
-                    {% if is_all_branches %}
-                        Across {{ low_branches }} branch{% if low_branches != 1 %}es{% endif %}
-                    {% else %}
-                        In {{ active_branch.branch_name }}
-                    {% endif %}
-                {% else %}
-                    In {{ active_branch.branch_name }}
-                {% endif %}
-            </div>
+            <div class="card-desc">Needs immediate attention</div>
         </div>
-        <div style="font-size: 0.85rem; color: var(--accent-blue); font-weight: 700; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.25rem;">View products &rarr;</div>
     </div>
     
     <!-- Moderate Stock Card -->
-    <div class="metric-card mod" id="metric-card-mod" style="cursor: pointer;">
+    <div class="metric-summary-card moderate-stock" id="metric-card-mod">
         <div>
-            <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🟡 Moderate Stock</h3>
-            <div class="metric-value mod" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-orange); display: flex; align-items: baseline;">
-                {{ mod_count }}
-                <span style="font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; margin-left: 0.25rem;">Product{% if mod_count != 1 %}s{% endif %}</span>
+            <div class="card-title">Moderate Stock</div>
+            <div class="card-value">
+                {{ mod_count }} <span class="card-value-label">Product{% if mod_count != 1 %}s{% endif %}</span>
             </div>
-            <div class="metric-label" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;">
-                {% if request.user.is_superuser or request.user.is_staff %}
-                    {% if is_all_branches %}
-                        Across {{ mod_branches }} branch{% if mod_branches != 1 %}es{% endif %}
-                    {% else %}
-                        In {{ active_branch.branch_name }}
-                    {% endif %}
-                {% else %}
-                    In {{ active_branch.branch_name }}
-                {% endif %}
-            </div>
+            <div class="card-desc">Consider reordering soon</div>
         </div>
-        <div style="font-size: 0.85rem; color: var(--accent-blue); font-weight: 700; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.25rem;">View products &rarr;</div>
     </div>
     
     <!-- Sufficient Stock Card -->
-    <div class="metric-card suff" id="metric-card-suff" style="cursor: pointer;">
+    <div class="metric-summary-card sufficient-stock" id="metric-card-suff">
         <div>
-            <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🟢 Sufficient Stock</h3>
-            <div class="metric-value suff" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-green); display: flex; align-items: baseline;">
-                {{ suff_count }}
-                <span style="font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; margin-left: 0.25rem;">Product{% if suff_count != 1 %}s{% endif %}</span>
+            <div class="card-title">Sufficient Stock</div>
+            <div class="card-value">
+                {{ suff_count }} <span class="card-value-label">Product{% if suff_count != 1 %}s{% endif %}</span>
             </div>
-            <div class="metric-label" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;">
-                {% if request.user.is_superuser or request.user.is_staff %}
-                    {% if is_all_branches %}
-                        Across {{ suff_branches }} branch{% if suff_branches != 1 %}es{% endif %}
-                    {% else %}
-                        In {{ active_branch.branch_name }}
-                    {% endif %}
-                {% else %}
-                    In {{ active_branch.branch_name }}
-                {% endif %}
-            </div>
+            <div class="card-desc">Well stocked</div>
         </div>
-        <div style="font-size: 0.85rem; color: var(--accent-blue); font-weight: 700; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.25rem;">View products &rarr;</div>
     </div>
 </div>
 
@@ -304,8 +340,8 @@
     Management Portals
 </h2>
 
-<!-- Portals Grid (3 consistent cards) -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
+<!-- Portals Grid (2x2 layout) -->
+<div class="management-portals-grid services-grid" style="gap: 1.5rem; margin-bottom: 4rem;">
     <!-- Supplies Portal -->
     <a href="{% url 'inventory:laundry_supplies' %}" class="portal-card">
         <div class="portal-image">
@@ -382,16 +418,18 @@
             {% if low_supplies %}
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 {% for item in low_supplies %}
-                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem;">{{ item.product.name }}</div>
-                            <div style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.15rem;">
-                                <span><strong style="color: var(--accent-blue);">[{{ item.branch.branch_name }}]</strong> ({{ item.branch.branch_code }})</span>
-                                <span>{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</span>
-                                <span style="color: var(--accent-orange); font-weight: 600;">Refill needed: {{ item.required_refill|floatformat:"0" }} {{ item.product.unit }}</span>
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem;">{{ item.product.name }}</div>
+                                <div style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.15rem;">
+                                    <span><strong style="color: var(--accent-blue);">{{ item.branch.branch_name }}</strong> ({{ item.branch.branch_code }})</span>
+                                    <span>{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</span>
+                                    <span style="color: var(--accent-orange); font-weight: 600;">Refill needed: {{ item.required_refill|floatformat:"0" }} {{ item.product.unit }}</span>
+                                </div>
                             </div>
+                            <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700; white-space: nowrap;">{% if item.remaining_percentage is not None %}{{ item.remaining_percentage|floatformat:"0" }}%{% else %}0%{% endif %} remaining</span>
                         </div>
-                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{% if item.remaining_percentage is not None %}{{ item.remaining_percentage|floatformat:"0" }}%{% else %}0%{% endif %} remaining</span>
                     </div>
                 {% endfor %}
                 </div>
@@ -403,16 +441,18 @@
             {% if low_accessories %}
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 {% for item in low_accessories %}
-                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem;">{{ item.product.name }}</div>
-                            <div style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.15rem;">
-                                <span><strong style="color: var(--accent-blue);">[{{ item.branch.branch_name }}]</strong> ({{ item.branch.branch_code }})</span>
-                                <span>{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</span>
-                                <span style="color: var(--accent-orange); font-weight: 600;">Refill needed: {{ item.required_refill|floatformat:"0" }} {{ item.product.unit }}</span>
+                    <div style="background-color: var(--surface-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem;">{{ item.product.name }}</div>
+                                <div style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.15rem;">
+                                    <span><strong style="color: var(--accent-blue);">{{ item.branch.branch_name }}</strong> ({{ item.branch.branch_code }})</span>
+                                    <span>{{ item.current_stock|floatformat:"0" }} / {{ item.base_stock|floatformat:"0" }} {{ item.product.unit }} remaining</span>
+                                    <span style="color: var(--accent-orange); font-weight: 600;">Refill needed: {{ item.required_refill|floatformat:"0" }} {{ item.product.unit }}</span>
+                                </div>
                             </div>
+                            <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700; white-space: nowrap;">{% if item.remaining_percentage is not None %}{{ item.remaining_percentage|floatformat:"0" }}%{% else %}0%{% endif %} remaining</span>
                         </div>
-                        <span class="status-badge status-red" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; font-weight: 700;">{% if item.remaining_percentage is not None %}{{ item.remaining_percentage|floatformat:"0" }}%{% else %}0%{% endif %} remaining</span>
                     </div>
                 {% endfor %}
                 </div>
@@ -420,12 +460,11 @@
                 <p style="color: var(--text-muted); font-style: italic;">No low-stock accessories.</p>
             {% endif %}
         </div>
-        <div class="modal-actions" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <div>
-                {% if request.user.is_superuser or request.user.is_staff %}
-                    <button class="btn-primary" id="btn-request-refill" type="button" onclick="triggerRequestRefill()" style="height: 2.5rem; padding: 0 1.25rem; border-radius: var(--radius-pill); font-weight: 700; cursor: pointer;">Request Refill</button>
-                {% endif %}
-            </div>
+        <div class="modal-actions" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; align-items: center; gap: 1rem; width: 100%;">
+            <span id="refill-batch-msg" style="font-size: 0.88rem; margin-right: auto;"></span>
+            <button class="btn-primary" id="btn-request-refill" type="button" onclick="submitBatchRefillRequest(this)" style="height: 2.5rem; padding: 0 1.25rem; border-radius: var(--radius-pill); font-weight: 700; cursor: pointer; background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; border: none; transition: opacity 0.2s;" onmouseover="if(!this.disabled) this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                📧 Request Refill
+            </button>
             <button class="btn-secondary" type="button" onclick="closeDetailsModal('low-stock-modal')">Close</button>
         </div>
     </div>
@@ -536,13 +575,17 @@
 </div>
 
 <script>
-    function triggerRequestRefill() {
-        const btn = document.getElementById('btn-request-refill');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerText = 'Requesting...';
+    function submitBatchRefillRequest(btn) {
+        const msgEl = document.getElementById('refill-batch-msg');
+
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        btn.textContent = 'Sending...';
+        if (msgEl) {
+            msgEl.textContent = '';
+            msgEl.style.color = '';
         }
-        
+
         fetch('{% url "inventory:request_refill_ajax" %}', {
             method: 'POST',
             headers: {
@@ -551,28 +594,46 @@
             },
             body: JSON.stringify({})
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerText = 'Request Refill';
-            }
             if (data.success) {
-                showToast('Refill request sent successfully!', 'success');
-                closeDetailsModal('low-stock-modal');
+                btn.textContent = '✓ Request Sent';
+                btn.style.background = 'linear-gradient(135deg, #16a34a, #22c55e)';
+                btn.style.opacity = '1';
+                if (msgEl) {
+                    msgEl.textContent = '✓ Refill request sent to admin successfully.';
+                    msgEl.style.color = '#16a34a';
+                }
+            } else if (data.duplicate) {
+                btn.textContent = '✓ Already Sent';
+                btn.style.background = 'linear-gradient(135deg, #6b7280, #9ca3af)';
+                btn.style.opacity = '1';
+                if (msgEl) {
+                    msgEl.textContent = 'Refill request already submitted.';
+                    msgEl.style.color = '#6b7280';
+                }
             } else {
-                showToast('Error: ' + data.error, 'warning');
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.textContent = '⚠ Retry';
+                if (msgEl) {
+                    msgEl.textContent = data.error || 'Unable to send refill request. Please try again.';
+                    msgEl.style.color = '#ef4444';
+                }
             }
         })
         .catch(err => {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerText = 'Request Refill';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.textContent = '⚠ Retry';
+            if (msgEl) {
+                msgEl.textContent = 'Network error. Please try again.';
+                msgEl.style.color = '#ef4444';
             }
-            showToast('Network error while requesting refill.', 'warning');
-            console.error(err);
+            console.error('[Batch Refill Request]', err);
         });
     }
+
 
     function openDetailsModal(modalId) {
         const modal = document.getElementById(modalId);

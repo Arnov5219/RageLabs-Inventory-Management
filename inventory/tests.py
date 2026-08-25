@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from decimal import Decimal
 from datetime import date
@@ -661,3 +661,283 @@ class GoogleSheetsExportAndMonthFilterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Unable to connect to Google Sheets: Connection/Timeout error (Connection Refused)")
         self.assertNotContains(response, "Traceback")
+# ===========================================================================
+# Inventory Refill Request Tests
+# ===========================================================================
+from .models import InventoryRefillRequest, InventoryRefillRequestItem
+
+class InventoryRefillRequestTests(TestCase):
+    """Tests for the batch manual Request Refill backend flow."""
+
+    def setUp(self):
+        self.client = Client()
+        self.branch = Branch.objects.create(
+            branch_code="TEST-REFILL-BR-A",
+            branch_name="Test Refill Branch A",
+            google_sheet_id="test-sheet-id-refill-a",
+        )
+        self.branch_b = Branch.objects.create(
+            branch_code="TEST-REFILL-BR-B",
+            branch_name="Test Refill Branch B",
+            google_sheet_id="test-sheet-id-refill-b",
+        )
+        self.product_red = Product.objects.create(
+            name="Red Detergent",
+            category="Laundry Supplies",
+            unit="L",
+            supplier="SupplyCo",
+        )
+        self.product_out = Product.objects.create(
+            name="Out-of-Stock Softener",
+            category="Laundry Supplies",
+            unit="pcs",
+            supplier="SupplyCo",
+        )
+        self.product_green = Product.objects.create(
+            name="Green Detergent",
+            category="Laundry Supplies",
+            unit="L",
+            supplier="SupplyCo",
+        )
+        self.product_yellow = Product.objects.create(
+            name="Yellow Clip",
+            category="Laundry Accessories",
+            unit="pcs",
+            supplier="SupplyCo",
+        )
+
+        # Set up branch A inventory
+        self.inv_red = Inventory.objects.create(
+            branch=self.branch, product=self.product_red,
+            base_stock=10, current_stock=1, yellow_threshold=4, red_threshold=2
+        )
+        # Ensure status is recalculated correctly
+        self.inv_red.save()
+
+        self.inv_out = Inventory.objects.create(
+            branch=self.branch, product=self.product_out,
+            base_stock=10, current_stock=0, yellow_threshold=4, red_threshold=2
+        )
+        self.inv_out.save()
+
+        self.inv_green = Inventory.objects.create(
+            branch=self.branch, product=self.product_green,
+            base_stock=10, current_stock=10, yellow_threshold=4, red_threshold=2
+        )
+        self.inv_green.save()
+
+        self.inv_yellow = Inventory.objects.create(
+            branch=self.branch, product=self.product_yellow,
+            base_stock=10, current_stock=3, yellow_threshold=4, red_threshold=2
+        )
+        self.inv_yellow.save()
+
+        # Set up branch B inventory (isolation test)
+        self.inv_red_b = Inventory.objects.create(
+            branch=self.branch_b, product=self.product_red,
+            base_stock=10, current_stock=1, yellow_threshold=4, red_threshold=2
+        )
+        self.inv_red_b.save()
+
+        # Users
+        self.staff_user = User.objects.create_user(
+            username="staff_user", password="pass123", is_staff=True
+        )
+        self.regular_user = User.objects.create_user(
+            username="regular_user", email="employee@test.local", password="pass123", is_staff=False
+        )
+        self.another_user = User.objects.create_user(
+            username="another_user", password="pass123", is_staff=False
+        )
+
+        # Profile assignments
+        EmployeeProfile.objects.create(user=self.regular_user, branch=self.branch)
+        EmployeeProfile.objects.create(user=self.another_user, branch=self.branch)
+
+        self.url = reverse("inventory:request_refill_ajax")
+
+    def _post(self):
+        return self.client.post(
+            self.url,
+            data=json.dumps({}),
+            content_type="application/json",
+        )
+
+    # ── Auth & permission guards ──────────────────────────────────────────
+
+    def test_unauthenticated_request_rejected(self):
+        """Unauthenticated users get 401."""
+        resp = self._post()
+        self.assertEqual(resp.status_code, 401)
+        data = resp.json()
+        self.assertFalse(data["success"])
+        self.assertIn("Authentication", data["error"])
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_regular_employee_can_request_refill(self, MockEmail):
+        """Ordinary logged in employee can successfully trigger refill request."""
+        MockEmail.return_value.send.return_value = None
+        self.client.force_login(self.regular_user)
+        resp = self._post()
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get("success"))
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_admin_can_request_refill(self, MockEmail):
+        """Admins/staff can successfully trigger refill request."""
+        MockEmail.return_value.send.return_value = None
+        self.client.force_login(self.staff_user)
+        
+        # Set active branch in session
+        session = self.client.session
+        session['selected_branch_id'] = self.branch.id
+        session.save()
+
+        resp = self._post()
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get("success"))
+
+    # ── Empty cases ───────────────────────────────────────────────────────
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_empty_red_product_list_does_not_send_email(self, MockEmail):
+        """If there are no RED/OUT_OF_STOCK products for the branch, return success=False and don't send email."""
+        # Make all items green for this branch
+        self.inv_red.current_stock = 10
+        self.inv_red.save()
+        self.inv_out.current_stock = 10
+        self.inv_out.save()
+
+        self.client.force_login(self.regular_user)
+        resp = self._post()
+        data = resp.json()
+        self.assertFalse(data.get("success"))
+        self.assertEqual(data.get("error"), "No products currently require refill.")
+        MockEmail.assert_not_called()
+
+    # ── DB Integrity & Email contents ─────────────────────────────────────
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_successful_refill_request_creates_db_record(self, MockEmail):
+        """A valid request creates one InventoryRefillRequest and associated items."""
+        MockEmail.return_value.send.return_value = None
+        self.client.force_login(self.regular_user)
+        resp = self._post()
+        data = resp.json()
+        self.assertTrue(data.get("success"))
+
+        # 1 request batch should be created
+        req = InventoryRefillRequest.objects.filter(branch=self.branch, requested_by=self.regular_user).first()
+        self.assertIsNotNone(req)
+        self.assertEqual(req.status, InventoryRefillRequest.STATUS_PENDING)
+
+        # 2 items should be associated (Red Detergent, Out-of-Stock Softener)
+        items = req.items.all()
+        self.assertEqual(items.count(), 2)
+        pids = [item.product_id for item in items]
+        self.assertIn(self.product_red.id, pids)
+        self.assertIn(self.product_out.id, pids)
+        self.assertNotIn(self.product_green.id, pids)
+        self.assertNotIn(self.product_yellow.id, pids)
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_successful_refill_request_sends_email(self, MockEmail):
+        """A valid request sends one email containing RED/OUT_OF_STOCK items."""
+        MockEmail.return_value.send.return_value = None
+        self.client.force_login(self.regular_user)
+        resp = self._post()
+        self.assertTrue(resp.json().get("success"))
+
+        MockEmail.assert_called_once()
+        call_kwargs = MockEmail.call_args
+        subject = call_kwargs[1]["subject"] if call_kwargs[1] else call_kwargs[0][0]
+        body = call_kwargs[1]["body"] if call_kwargs[1] else call_kwargs[0][1]
+
+        self.assertEqual(subject, "Inventory Refill Request - Test Refill Branch A")
+        self.assertIn("employee@test.local", body)
+        self.assertIn("Red Detergent", body)
+        self.assertIn("Out-of-Stock Softener", body)
+        self.assertNotIn("Green Detergent", body)
+
+    # ── Branch isolation ──────────────────────────────────────────────────
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_branch_isolation_refill(self, MockEmail):
+        """Refill request only contains red items from the active branch, not others."""
+        MockEmail.return_value.send.return_value = None
+        
+        # Test branch B
+        regular_user_b = User.objects.create_user(
+            username="regular_user_b", password="pass123", is_staff=False
+        )
+        EmployeeProfile.objects.create(user=regular_user_b, branch=self.branch_b)
+
+        self.client.force_login(regular_user_b)
+        resp = self._post()
+        self.assertTrue(resp.json().get("success"))
+
+        # Branch B only has 1 red item (Red Detergent)
+        req = InventoryRefillRequest.objects.filter(branch=self.branch_b).first()
+        self.assertIsNotNone(req)
+        self.assertEqual(req.items.count(), 1)
+        self.assertEqual(req.items.first().product_id, self.product_red.id)
+
+    # ── Duplicate check ───────────────────────────────────────────────────
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_duplicate_pending_request_blocked(self, MockEmail):
+        """A duplicate pending request containing the same products from the same employee is rejected."""
+        MockEmail.return_value.send.return_value = None
+        self.client.force_login(self.regular_user)
+
+        resp1 = self._post()
+        self.assertTrue(resp1.json().get("success"))
+
+        resp2 = self._post()
+        data2 = resp2.json()
+        self.assertFalse(data2.get("success"))
+        self.assertTrue(data2.get("duplicate"))
+        self.assertEqual(data2.get("error"), "Refill request already submitted.")
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_another_employee_can_request(self, MockEmail):
+        """If one employee has a pending request, another employee is still allowed to submit."""
+        MockEmail.return_value.send.return_value = None
+        
+        self.client.force_login(self.regular_user)
+        self._post()
+
+        self.client.force_login(self.another_user)
+        resp = self._post()
+        self.assertTrue(resp.json().get("success"))
+
+    # ── Email failure handling ────────────────────────────────────────────
+
+    @patch("inventory.views.EmailMultiAlternatives")
+    @override_settings(ADMIN_ALERT_EMAIL="admin@test.local", DEFAULT_FROM_EMAIL="from@test.local")
+    def test_email_failure_rolls_back_db(self, MockEmail):
+        """If email sending fails, the request is not saved (rollback) and returns error."""
+        MockEmail.return_value.send.side_effect = Exception("SMTP error")
+        self.client.force_login(self.regular_user)
+
+        resp = self._post()
+        self.assertEqual(resp.status_code, 500)
+        self.assertFalse(resp.json().get("success"))
+        self.assertIn("Unable to send refill request", resp.json().get("error"))
+
+        # DB request should have been rolled back
+        self.assertEqual(InventoryRefillRequest.objects.filter(branch=self.branch).count(), 0)
+
+    def test_get_request_not_allowed(self):
+        """GET to refill endpoint returns 405 Method Not Allowed."""
+        self.client.force_login(self.staff_user)
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 405)
