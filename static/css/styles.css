@@ -1239,63 +1239,8 @@ footer {
     padding-top: 1.5rem;
 }
 
-@media(max-width: 768px) {
-    .navbar {
-        flex-direction: column;
-        gap: 1rem;
-    }
 
-    .logo,
-    .footer-logo {
-        flex-basis: 115px;
-        width: 115px;
-        height: 48px;
-    }
 
-    .logo img,
-    .footer-logo img {
-        width: 155px;
-        transform: translate(-20px, -7px);
-    }
-
-    .footer-content {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .footer-links {
-        justify-content: center;
-    }
-
-    .page-title-area {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-
-    .management-portals-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .ambient-bubble:nth-child(3),
-    .ambient-bubble:nth-child(6) {
-        display: none;
-    }
-
-    .ambient-bubble:nth-child(1) {
-        --bubble-left: -8%;
-    }
-
-    .ambient-bubble:nth-child(2) {
-        --bubble-left: 78%;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .ambient-bubble {
-        animation: none;
-    }
-}
 
 .add-page-link {
     color: var(--accent-gold);
@@ -1657,51 +1602,169 @@ tr.branch-row:hover, tr.history-row:hover td {
    MOBILE RESPONSIVENESS AND DRAWERS
    ========================================================================== */
 
+/* Body scroll lock when mobile nav is open */
+body.nav-open {
+    overflow: hidden;
+}
+
 /* Mobile Navigation Hamburger button styles */
 .nav-toggle {
     display: none;
     flex-direction: column;
-    justify-content: space-between;
-    width: 24px;
-    height: 18px;
+    justify-content: center;
+    align-items: center;
+    width: 44px;
+    height: 44px;
     background: transparent;
     border: none;
     cursor: pointer;
     padding: 0;
     z-index: 150;
     outline: none;
+    gap: 5px;
+    border-radius: 8px;
+    transition: var(--transition-smooth);
+}
+
+.nav-toggle:hover {
+    background-color: var(--surface-hover);
 }
 
 .nav-toggle-bar {
-    width: 100%;
+    width: 22px;
     height: 2px;
     background-color: var(--text-primary);
     transition: var(--transition-smooth);
-    transform-origin: left center;
+    transform-origin: center center;
+    border-radius: 2px;
 }
 
-/* Mobile styles below 768px */
+/* Mobile nav drawer backdrop overlay */
+.nav-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 130;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.nav-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ==========================================================================
+   RESPONSIVE TYPOGRAPHY
+   ========================================================================== */
+.page-title-area h1 {
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+.services-section-title {
+    font-size: clamp(1.15rem, 3vw, 1.5rem);
+}
+
+.modal-header h2 {
+    font-size: clamp(1.1rem, 3.5vw, 1.5rem);
+}
+
+/* ==========================================================================
+   RESPONSIVE: HISTORY FILTER FORM
+   ========================================================================== */
+.history-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1.5rem;
+}
+
+.history-filter-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+/* ==========================================================================
+   RESPONSIVE: DASHBOARD INLINE GRIDS
+   ========================================================================== */
+.dashboard-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+/* ==========================================================================
+   BREAKPOINT: TABLET (max-width: 1199px)
+   ========================================================================== */
+@media (max-width: 1199px) {
+    main {
+        padding: 2rem 1.5rem;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+
+    .portal-image {
+        height: 180px;
+    }
+}
+
+/* ==========================================================================
+   BREAKPOINT: MOBILE (max-width: 768px)
+   ========================================================================== */
 @media (max-width: 768px) {
+    /* --- Navbar --- */
+    .navbar {
+        flex-direction: row !important;
+        flex-wrap: nowrap;
+        padding: 0.6rem 1rem;
+        min-height: 60px;
+    }
+
+    .logo {
+        flex: 0 0 115px;
+        width: 115px;
+        height: 48px;
+    }
+
+    .logo img {
+        width: 155px;
+        transform: translate(-20px, -7px);
+    }
+
     .nav-toggle {
         display: flex;
     }
 
+    .nav-backdrop {
+        display: block;
+    }
+
     .nav-links {
         position: fixed;
-        top: 72px; /* standard sticky height */
+        top: 0;
         right: -100%;
-        width: 280px;
-        height: calc(100vh - 72px);
+        width: min(280px, 80vw);
+        height: 100vh;
+        height: 100dvh;
         background-color: var(--surface-card);
         border-left: 1px solid var(--border-color);
         flex-direction: column !important;
         align-items: flex-start !important;
-        padding: 2.5rem 2rem !important;
-        gap: 1.5rem !important;
-        transition: var(--transition-smooth);
-        box-shadow: -4px 10px 15px -3px rgba(0, 0, 0, 0.05);
+        padding: 5rem 1.5rem 2rem !important;
+        gap: 0.5rem !important;
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: -8px 0 30px rgba(0, 0, 0, 0.08);
         z-index: 140;
         overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
     .nav-links.active {
@@ -1719,26 +1782,276 @@ tr.branch-row:hover, tr.history-row:hover td {
         width: 100%;
         padding: 0.75rem 1rem !important;
         border-radius: 8px !important;
+        font-size: 1rem !important;
+        min-height: 44px;
+        display: flex !important;
+        align-items: center;
     }
 
     .branch-select-navbar {
         width: 100%;
         margin-top: 0.25rem;
+        min-height: 44px;
+        font-size: 0.9rem;
     }
 
     .nav-toggle.open .nav-toggle-bar:nth-child(1) {
-        transform: rotate(45deg) translate(1px, -1px);
+        transform: rotate(45deg) translate(4px, -2px);
     }
     .nav-toggle.open .nav-toggle-bar:nth-child(2) {
         opacity: 0;
-        transform: scale(0);
+        transform: scaleX(0);
     }
     .nav-toggle.open .nav-toggle-bar:nth-child(3) {
-        transform: rotate(-45deg) translate(1px, 1px);
+        transform: rotate(-45deg) translate(4px, 2px);
+    }
+
+    /* --- Main layout --- */
+    main {
+        padding: 1.5rem 1rem;
+    }
+
+    .page-title-area {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* --- Dashboard metrics --- */
+    .metrics-container {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    .metric-summary-card .card-value {
+        font-size: 1.6rem;
+    }
+
+    /* --- Dashboard portals --- */
+    .management-portals-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .portal-image {
+        height: 180px;
+    }
+
+    .portal-content {
+        padding: 1.25rem;
+    }
+
+    .portal-title {
+        font-size: 1.15rem;
+    }
+
+    /* --- Product grid --- */
+    .product-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .product-emoji-banner {
+        height: 110px;
+        font-size: 3.5rem;
+    }
+
+    .product-image {
+        height: 120px;
+    }
+
+    .product-info-area {
+        padding: 1.25rem;
+    }
+
+    .product-name {
+        font-size: 1.1rem;
+    }
+
+    /* Touch-friendly pill buttons */
+    .pill-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.25rem;
+    }
+
+    .pill-value {
+        font-size: 1rem;
+    }
+
+    .pill-value-input {
+        width: 56px;
+        height: 36px;
+        font-size: 1rem;
+    }
+
+    .edit-btn,
+    .remove-btn {
+        padding: 0.65rem 1rem;
+        font-size: 0.9rem;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stock-badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.85rem;
+    }
+
+    .adjust-controls {
+        gap: 0.5rem;
+    }
+
+    /* --- History filter --- */
+    .history-filter-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .history-filter-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .history-filter-buttons .btn-secondary,
+    .history-filter-buttons .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .months-checkbox-grid {
+        gap: 0.75rem !important;
+    }
+
+    /* --- Dashboard tables (inline styled) --- */
+    .dashboard-table-wrap {
+        overflow-x: visible !important;
+    }
+
+    .dashboard-table-wrap table {
+        min-width: 0 !important;
+    }
+
+    /* --- Dashboard summary grid --- */
+    .dashboard-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    /* --- Modals --- */
+    .modal-content {
+        width: 92vw !important;
+        max-width: none !important;
+        max-height: 85vh !important;
+        padding: 1.5rem !important;
+        margin: 0 auto;
+        overflow-y: auto;
+    }
+
+    .modal-actions {
+        flex-direction: column-reverse !important;
+        gap: 0.75rem !important;
+    }
+
+    .modal-actions button,
+    .modal-actions .btn-primary,
+    .modal-actions .btn-secondary {
+        width: 100% !important;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    #refill-batch-msg {
+        margin-right: 0 !important;
+        text-align: center;
+        width: 100%;
+    }
+
+    /* --- Footer --- */
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.25rem;
+    }
+
+    .footer-logo {
+        flex-basis: 115px;
+        width: 115px;
+        height: 48px;
+        margin: 0 auto;
+    }
+
+    .footer-logo img {
+        width: 155px;
+        transform: translate(-20px, -7px);
+    }
+
+    .footer-links {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .footer-links a {
+        font-size: 0.9rem;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .copyright {
+        margin-top: 1.25rem;
+        padding-top: 1.25rem;
+        font-size: 0.8rem;
+    }
+
+    footer {
+        padding: 1.75rem 1rem;
+    }
+
+    /* --- Toast --- */
+    .toast-container {
+        top: auto;
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+
+    /* --- Ambient --- */
+    .ambient-bubble:nth-child(3),
+    .ambient-bubble:nth-child(6) {
+        display: none;
+    }
+
+    .ambient-bubble:nth-child(1) {
+        --bubble-left: -8%;
+    }
+
+    .ambient-bubble:nth-child(2) {
+        --bubble-left: 78%;
+    }
+
+    /* --- Login --- */
+    .login-card {
+        padding: 2.25rem 1.5rem;
+        margin: 0 1rem;
+        max-width: none;
+    }
+
+    .login-header-title {
+        font-size: 1.65rem;
     }
 }
 
-/* Table-to-Card Stacked layouts below 600px */
+/* ==========================================================================
+   BREAKPOINT: TABLE-TO-CARD (max-width: 600px)
+   ========================================================================== */
 @media (max-width: 600px) {
     .table-overview,
     .table-attention,
@@ -1775,10 +2088,15 @@ tr.branch-row:hover, tr.history-row:hover td {
         border: 1px solid var(--border-color);
         border-radius: 12px;
         margin-bottom: 1rem;
-        padding: 1rem !important;
+        padding: 0.75rem 1rem !important;
         background: var(--surface-card);
         box-shadow: var(--shadow-sm);
         position: relative;
+    }
+
+    /* Hide totals row border-top override for card layout */
+    .table-overview tr.totals-row {
+        border-top: 2px solid var(--accent-gold);
     }
 
     .table-overview td,
@@ -1788,13 +2106,14 @@ tr.branch-row:hover, tr.history-row:hover td {
         border: none !important;
         border-bottom: 1px solid var(--surface-hover) !important;
         position: relative;
-        padding: 0.75rem 0.5rem 0.75rem 50% !important;
+        padding: 0.6rem 0.5rem 0.6rem 45% !important;
         text-align: right !important;
-        font-size: 0.9rem;
-        min-height: 2.75rem;
+        font-size: 0.88rem;
+        min-height: 2.5rem;
         display: flex !important;
         align-items: center;
         justify-content: flex-end;
+        word-break: break-word;
     }
 
     .table-overview td:last-child,
@@ -1810,88 +2129,166 @@ tr.branch-row:hover, tr.history-row:hover td {
     .table-product-detail td::before {
         position: absolute;
         top: 50%;
-        left: 0.5rem;
-        width: 45%;
-        padding-right: 10px;
+        left: 0.75rem;
+        width: 40%;
+        padding-right: 8px;
         white-space: nowrap;
         text-align: left;
         font-weight: 700;
         color: var(--text-secondary);
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         text-transform: uppercase;
+        letter-spacing: 0.3px;
         transform: translateY(-50%);
         pointer-events: none;
     }
 
     /* Labels for Branch Overview Table */
     .table-overview td:nth-of-type(1)::before { content: "Branch"; }
-    .table-overview td:nth-of-type(2)::before { content: "RED Alerts"; }
-    .table-overview td:nth-of-type(3)::before { content: "YELLOW Alerts"; }
-    .table-overview td:nth-of-type(4)::before { content: "GREEN Alerts"; }
-    .table-overview td:nth-of-type(5)::before { content: "Refill Required"; }
+    .table-overview td:nth-of-type(2)::before { content: "🔴 RED"; }
+    .table-overview td:nth-of-type(3)::before { content: "🟡 YELLOW"; }
+    .table-overview td:nth-of-type(4)::before { content: "🟢 GREEN"; }
+    .table-overview td:nth-of-type(5)::before { content: "Refill Req."; }
 
     /* Labels for Attention Required Table */
     .table-attention td:nth-of-type(1)::before { content: "Branch"; }
     .table-attention td:nth-of-type(2)::before { content: "Product"; }
-    .table-attention td:nth-of-type(3)::before { content: "Current Stock"; }
-    .table-attention td:nth-of-type(4)::before { content: "Base Stock"; }
+    .table-attention td:nth-of-type(3)::before { content: "Current"; }
+    .table-attention td:nth-of-type(4)::before { content: "Base"; }
     .table-attention td:nth-of-type(5)::before { content: "Status"; }
-    .table-attention td:nth-of-type(6)::before { content: "Refill Needed"; }
+    .table-attention td:nth-of-type(6)::before { content: "Refill"; }
 
     /* Labels for History Table */
     .table-history td:nth-of-type(1)::before { content: "Date"; }
     .table-history td:nth-of-type(2)::before { content: "Product"; }
     .table-history td:nth-of-type(3)::before { content: "Base Stock"; }
-    .table-history td:nth-of-type(4)::before { content: "Closing Stock"; }
-    .table-history td:nth-of-type(5)::before { content: "Remaining %"; }
+    .table-history td:nth-of-type(4)::before { content: "Closing"; }
+    .table-history td:nth-of-type(5)::before { content: "Remaining"; }
     .table-history td:nth-of-type(6)::before { content: "Status"; }
 
     /* Labels for Product Detail History Table */
     .table-product-detail td:nth-of-type(1)::before { content: "Date & Time"; }
     .table-product-detail td:nth-of-type(2)::before { content: "Action"; }
-    .table-product-detail td:nth-of-type(3)::before { content: "Change Qty"; }
+    .table-product-detail td:nth-of-type(3)::before { content: "Change"; }
     .table-product-detail td:nth-of-type(4)::before { content: "Before"; }
     .table-product-detail td:nth-of-type(5)::before { content: "After"; }
-    .table-product-detail td:nth-of-type(6)::before { content: "Base Stock"; }
-    .table-product-detail td:nth-of-type(7)::before { content: "Remaining %"; }
+    .table-product-detail td:nth-of-type(6)::before { content: "Base"; }
+    .table-product-detail td:nth-of-type(7)::before { content: "Remaining"; }
     .table-product-detail td:nth-of-type(8)::before { content: "Notes"; }
+
+    /* History notes column wrapping */
+    .history-notes {
+        white-space: normal;
+        max-width: none;
+    }
 }
 
+/* ==========================================================================
+   BREAKPOINT: SMALL MOBILE (max-width: 480px)
+   ========================================================================== */
 @media (max-width: 480px) {
-    .product-grid {
-        grid-template-columns: 1fr !important;
-        gap: 1.25rem !important;
+    main {
+        padding: 1.25rem 0.75rem;
     }
-    
-    .login-card {
-        padding: 2.25rem 1.5rem !important;
-        margin: 0 1rem;
+
+    .dashboard-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
-    
-    .metrics-container {
-        grid-template-columns: 1fr !important;
-        gap: 1rem !important;
+
+    .portal-image {
+        height: 150px;
+    }
+
+    .portal-content {
+        padding: 1rem;
+    }
+
+    .portal-title {
+        font-size: 1.05rem;
+    }
+
+    .portal-desc {
+        font-size: 0.85rem;
+    }
+
+    .product-info-area {
+        padding: 1rem;
+    }
+
+    .product-emoji-banner {
+        height: 100px;
+        font-size: 3rem;
+    }
+
+    .product-image {
+        height: 100px;
     }
 
     .modal-content {
-        padding: 1.5rem !important;
-        width: 95% !important;
+        width: 95vw !important;
+        padding: 1.25rem !important;
     }
 
-    .modal-actions {
-        flex-direction: column-reverse !important;
-        gap: 0.75rem !important;
+    .login-card {
+        padding: 1.75rem 1.25rem !important;
+        margin: 0 0.5rem;
     }
 
-    .modal-actions button {
-        width: 100% !important;
-        height: 2.75rem !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 !important;
+    .login-header-title {
+        font-size: 1.5rem;
+    }
+
+    /* Adjust-controls stacking on very small screens */
+    .adjust-controls {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .adjust-controls .edit-btn {
+        width: 100%;
+    }
+
+    .quantity-stepper {
+        max-width: none;
+    }
+
+    /* Toast full width */
+    .toast-container {
+        left: 0.5rem;
+        right: 0.5rem;
     }
 }
+
+/* ==========================================================================
+   IMAGES RESPONSIVE SAFETY
+   ========================================================================== */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Re-apply specific image sizing where object-fit is used */
+.product-image {
+    max-width: none;
+    width: 100%;
+}
+
+.portal-image img {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+}
+
+.service-image img {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY
+   ========================================================================== */
 
 /* Accessibility: Support prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {

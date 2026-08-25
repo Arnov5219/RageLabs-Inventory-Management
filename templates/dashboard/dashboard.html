@@ -224,8 +224,8 @@
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
     Branch Overview
 </h2>
-<div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
-    <table class="table-overview" style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
+<div class="dashboard-table-wrap" style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
+    <table class="table-overview" style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left;">
         <thead>
             <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-weight: 700;">
                 <th style="padding: 1rem 0.5rem;">Branch</th>
@@ -247,7 +247,7 @@
                 </td>
             </tr>
             {% endfor %}
-            <tr style="font-weight: 800; border-top: 2.5px solid var(--border-color); background: rgba(0, 0, 0, 0.015);">
+            <tr class="totals-row" style="font-weight: 800; border-top: 2.5px solid var(--border-color); background: rgba(0, 0, 0, 0.015);">
                 <td style="padding: 1.2rem 0.5rem; color: var(--text-primary);">TOTAL</td>
                 <td style="padding: 1.2rem 0.5rem; text-align: center; color: var(--accent-red); font-size: 1.05rem;">{{ total_red }}</td>
                 <td style="padding: 1.2rem 0.5rem; text-align: center; color: var(--accent-orange); font-size: 1.05rem;">{{ total_yellow }}</td>
@@ -270,9 +270,9 @@
     <a href="#" onclick="openDetailsModal('low-stock-modal'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">View all &rarr;</a>
     {% endif %}
 </div>
-<div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
+<div class="dashboard-table-wrap" style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); overflow-x: auto; margin-bottom: 3.5rem;">
     {% if has_attention %}
-    <table class="table-attention" style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left; min-width: 600px;">
+    <table class="table-attention" style="width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.95rem; text-align: left;">
         <thead>
             <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-weight: 700;">
                 <th style="padding: 1rem 0.5rem;">Branch</th>
@@ -311,7 +311,7 @@
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
     Inventory Summary
 </h2>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3.5rem;">
+<div class="dashboard-summary-grid" style="margin-bottom: 3.5rem;">
     <div style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.5rem;">
         <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Total Products</span>
         <span style="font-size: 2rem; font-weight: 800; color: var(--text-primary);">{{ total_products }}</span>
@@ -347,7 +347,7 @@
 {% endif %}
 
 <!-- Management Portals Section -->
-{% if not user.is_superuser %}
+
 <h2 class="services-section-title" style="margin-top: 3rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: 800;">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
     Management Portals
@@ -417,7 +417,7 @@
         </div>
     </a>
 </div>
-{% endif %}
+
 
 <!-- Low Stock Details Modal -->
 <div class="modal-overlay" id="low-stock-modal">

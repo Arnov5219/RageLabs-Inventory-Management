@@ -12,7 +12,7 @@
 
 <!-- Month Filter and Google Sheets Export Form -->
 <div class="history-filter-card" style="background-color: var(--surface-card); border: 1px solid var(--border-color); border-radius: var(--radius-card); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-premium);">
-    <form method="get" action="" style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.5rem;">
+    <form method="get" action="" class="history-filter-form">
         <div class="form-group" style="margin-bottom: 0; flex-grow: 1; min-width: 250px;">
             <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">Select Month(s)</label>
             <div class="months-checkbox-grid" style="display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0.5rem 0;">
@@ -26,7 +26,7 @@
                 {% endfor %}
             </div>
         </div>
-        <div style="display: flex; gap: 1rem;">
+        <div class="history-filter-buttons">
             <button type="submit" class="btn-secondary" style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth);">
                 Apply Filter
             </button>

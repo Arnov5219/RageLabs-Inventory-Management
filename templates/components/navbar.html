@@ -1,6 +1,6 @@
 {% load static %}
 <header>
-    <nav class="navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem;">
+    <nav class="navbar">
         <a href="{% url 'inventory:dashboard' %}" class="logo" id="logo-brand">
             <img src="{% static 'images/logo.png' %}" alt="LaundryRage">
         </a>
@@ -12,23 +12,23 @@
         </button>
 
         <ul class="nav-links" id="nav-links-menu">
-        {% if not user.is_superuser %}
+        
             <li>
-                <a href="{% url 'inventory:dashboard' %}" id="nav-dashboard" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <a href="{% url 'inventory:dashboard' %}" id="nav-dashboard" class="nav-link-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                     Dashboard
                 </a>
             </li>
             <li>
-                <a href="{% url 'inventory:laundry_supplies' %}" id="nav-supplies" class="{% if request.resolver_match.url_name == 'laundry_supplies' %}active{% endif %}">
+                <a href="{% url 'inventory:laundry_supplies' %}" id="nav-supplies" class="nav-link-item {% if request.resolver_match.url_name == 'laundry_supplies' %}active{% endif %}">
                     Supplies
                 </a>
             </li>
             <li>
-                <a href="{% url 'inventory:laundry_accessories' %}" id="nav-accessories" class="{% if request.resolver_match.url_name == 'laundry_accessories' %}active{% endif %}">
+                <a href="{% url 'inventory:laundry_accessories' %}" id="nav-accessories" class="nav-link-item {% if request.resolver_match.url_name == 'laundry_accessories' %}active{% endif %}">
                     Accessories
                 </a>
             </li>
-            {% endif %}
+            
             {% if request.user.is_authenticated %}
                 <li style="display: flex; align-items: center; gap: 0.5rem;">
                     {% if request.user.is_superuser or request.user.is_staff %}
@@ -47,33 +47,77 @@
                     {% endif %}
                 </li>
                 <li>
-                    <a href="{% url 'inventory:logout' %}" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: color 0.3s ease;"
+                    <a href="{% url 'inventory:logout' %}" class="nav-link-item" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: color 0.3s ease;"
                        onmouseover="this.style.color='var(--accent-red)';" onmouseout="this.style.color='var(--text-muted)';">
                         Logout ({{ request.user.username }})
                     </a>
                 </li>
             {% else %}
                 <li>
-                    <a href="{% url 'inventory:login' %}" style="color: var(--accent-blue); font-size: 0.9rem; font-weight: 600; text-decoration: none;">
+                    <a href="{% url 'inventory:login' %}" class="nav-link-item" style="color: var(--accent-blue); font-size: 0.9rem; font-weight: 600; text-decoration: none;">
                         Login
                     </a>
                 </li>
             {% endif %}
         </ul>
     </nav>
+
+    <!-- Mobile nav backdrop overlay -->
+    <div class="nav-backdrop" id="nav-backdrop"></div>
 </header>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const navToggle = document.getElementById('nav-toggle-btn');
         const navLinks = document.getElementById('nav-links-menu');
-        if (navToggle && navLinks) {
-            navToggle.addEventListener('click', () => {
-                navToggle.classList.toggle('open');
-                navLinks.classList.toggle('active');
-                const expanded = navToggle.getAttribute('aria-expanded') === 'true' || false;
-                navToggle.setAttribute('aria-expanded', !expanded);
-            });
+        const navBackdrop = document.getElementById('nav-backdrop');
+
+        if (!navToggle || !navLinks) return;
+
+        const openMenu = () => {
+            navToggle.classList.add('open');
+            navLinks.classList.add('active');
+            navBackdrop.classList.add('active');
+            document.body.classList.add('nav-open');
+            navToggle.setAttribute('aria-expanded', 'true');
+        };
+
+        const closeMenu = () => {
+            navToggle.classList.remove('open');
+            navLinks.classList.remove('active');
+            navBackdrop.classList.remove('active');
+            document.body.classList.remove('nav-open');
+            navToggle.setAttribute('aria-expanded', 'false');
+        };
+
+        navToggle.addEventListener('click', () => {
+            const isOpen = navLinks.classList.contains('active');
+            if (isOpen) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
+        });
+
+        // Close on backdrop click
+        if (navBackdrop) {
+            navBackdrop.addEventListener('click', closeMenu);
         }
+
+        // Close menu when a nav link is clicked (mobile)
+        navLinks.querySelectorAll('.nav-link-item').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeMenu();
+                }
+            });
+        });
+
+        // Close menu on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && navLinks.classList.contains('active')) {
+                closeMenu();
+            }
+        });
     });
 </script>
