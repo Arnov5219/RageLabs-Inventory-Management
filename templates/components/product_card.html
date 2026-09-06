@@ -9,52 +9,60 @@
     {% endif %}
     
     <div class="product-info-area">
+        {% with monthly_inv=product.current_monthly_inventory %}
         <div class="product-header-block">
-            <span class="product-category-tag">{{ product.category }}</span>
-            <h2 class="product-name">{{ product.name }}</h2>
-            <div class="product-size">Size: {{ product.product_size }}</div>
-            
-        </div>
-        
-        <div>
-            <!-- Clickable Stock Badge to Restock (AJAX Overlay modal) -->
-            <div class="stock-badge-container" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem;">
-                {% with monthly_inv=product.current_monthly_inventory %}
-                <span class="stock-badge {% if monthly_inv %}{% if monthly_inv.status == 'RED' %}low{% elif monthly_inv.status == 'YELLOW' %}mod{% elif monthly_inv.status == 'GREEN' %}suff{% else %}no-base{% endif %}{% else %}no-base{% endif %}" 
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; width: 100%;">
+                <h2 class="product-name" style="margin: 0;">{{ product.name }}</h2>
+                <span class="stock-badge {% if monthly_inv %}{% if monthly_inv.status == 'RED' %}low{% elif monthly_inv.status == 'YELLOW' %}mod{% elif monthly_inv.status == 'GREEN' %}suff{% else %}no-base{% endif %}{% else %}no-base{% endif %}"
                       id="stock-badge-{{ product.id }}"
                       title="Click to Set Monthly Base Stock (AJAX)">
+                    {% if monthly_inv %}{% if monthly_inv.status == 'RED' %}LOW{% elif monthly_inv.status == 'YELLOW' %}MODERATE{% elif monthly_inv.status == 'GREEN' %}SUFFICIENT{% else %}NO BASE{% endif %}{% else %}NO BASE{% endif %}
+                </span>
+            </div>
+            {% if product.product_size %}
+            <div class="product-size" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Size: {{ product.product_size }}</div>
+            {% endif %}
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.65rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">
+                <span class="stock-bullet" style="font-size: 1rem; line-height: 1;">
+                    {% if monthly_inv %}{% if monthly_inv.status == 'RED' %}🔴{% elif monthly_inv.status == 'YELLOW' %}🟡{% elif monthly_inv.status == 'GREEN' %}🟢{% else %}⚪{% endif %}{% else %}⚪{% endif %}
+                </span>
+                <span>
                     {% if monthly_inv and monthly_inv.remaining_percentage is not None %}
                         {{ monthly_inv.current_stock|floatformat:"0" }} / {{ monthly_inv.base_stock|floatformat:"0" }} {{ product.unit }} remaining
                     {% else %}
-                        {{ product.inventory.current_quantity|floatformat:"0" }} {{ product.unit }} remaining (No Base Stock)
+                        {{ product.inventory.current_quantity|floatformat:"0" }} {{ product.unit }} remaining
                     {% endif %}
                 </span>
-                <span class="percentage-remaining" id="percentage-remaining-{{ product.id }}" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-left: 1.5rem; margin-top: -0.15rem;">
-                    {% if monthly_inv and monthly_inv.remaining_percentage is not None %}
-                        {{ monthly_inv.remaining_percentage|floatformat:"0" }}% remaining
-                    {% else %}
-                        Base stock not set
-                    {% endif %}
-                </span>
-                {% if monthly_inv and monthly_inv.required_refill > 0 %}
-                <span class="refill-recommendation" id="refill-recommendation-{{ product.id }}" style="font-size: 0.8rem; font-weight: 600; color: var(--accent-orange); margin-left: 1.5rem; margin-top: 0.1rem; display: block;">
-                    Refill needed: {{ monthly_inv.required_refill|floatformat:"0" }} {{ product.unit }}
-                </span>
+            </div>
+
+            <div class="percentage-remaining" id="percentage-remaining-{{ product.id }}" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-left: 1.4rem;">
+                {% if monthly_inv and monthly_inv.remaining_percentage is not None %}
+                    {{ monthly_inv.remaining_percentage|floatformat:"0" }}% remaining
+                {% else %}
+                    Base stock not set
                 {% endif %}
-                {% endwith %}
             </div>
-            
-            <!-- Adjust Controls: Pill Selector and Edit button (AJAX) -->
-            <div class="adjust-controls">
-                <div class="pill-selector">
-                    <button class="pill-btn minus" type="button">−</button>
-                    <span class="pill-value">{{ product.inventory.current_quantity|floatformat:"0" }}</span>
-                    <input type="number" class="pill-value-input" value="{{ product.inventory.current_quantity|floatformat:"0" }}" min="0" step="1" style="display: none;" required>
-                    <button class="pill-btn plus" type="button">+</button>
-                </div>
-                <button class="edit-btn" type="button">Edit</button>
+
+            {% if monthly_inv and monthly_inv.required_refill > 0 %}
+            <span class="refill-recommendation" id="refill-recommendation-{{ product.id }}" style="font-size: 0.8rem; font-weight: 700; color: var(--accent-orange); margin-left: 1.4rem; display: flex; align-items: center; gap: 0.25rem;">
+                ⚠️ Refill needed: {{ monthly_inv.required_refill|floatformat:"0" }} {{ product.unit }}
+            </span>
+            {% endif %}
+        </div>
+        {% endwith %}
+
+        <!-- Adjust Controls: Pill Stepper and Edit button (AJAX) -->
+        <div class="adjust-controls" style="margin-top: 0.85rem;">
+            <div class="pill-selector">
+                <button class="pill-btn minus" type="button" aria-label="Decrease quantity">−</button>
+                <span class="pill-value">{{ product.inventory.current_quantity|floatformat:"0" }}</span>
+                <input type="number" class="pill-value-input" value="{{ product.inventory.current_quantity|floatformat:"0" }}" min="0" step="1" style="display: none;" required>
+                <button class="pill-btn plus" type="button" aria-label="Increase quantity">+</button>
             </div>
-            
+            <button class="edit-btn" type="button">Edit</button>
         </div>
     </div>
 </div>

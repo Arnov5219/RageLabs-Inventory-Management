@@ -290,4 +290,63 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Export History to Google Sheets AJAX handler with loading state & disabled state
+    const exportHistoryBtn = document.getElementById('btn-export-history');
+    if (exportHistoryBtn) {
+        exportHistoryBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            if (exportHistoryBtn.disabled) return;
+            
+            const form = exportHistoryBtn.closest('form');
+            if (!form) return;
+            
+            const checkedBoxes = form.querySelectorAll('input[name="months"]:checked');
+            if (checkedBoxes.length === 0) {
+                showToast('Please select at least one month to export.', 'warning');
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            checkedBoxes.forEach(cb => {
+                params.append('months', cb.value);
+            });
+            params.append('export', 'google_sheets');
+            
+            const originalHtml = exportHistoryBtn.innerHTML;
+            exportHistoryBtn.disabled = true;
+            exportHistoryBtn.innerHTML = `
+                <span class="export-spinner"></span>
+                <span>Exporting to Google Sheets...</span>
+            `;
+            
+            try {
+                const targetUrl = (form.getAttribute('action') || window.location.pathname) + '?' + params.toString();
+                const response = await fetch(targetUrl, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    showToast('History successfully exported to Google Sheets', 'success');
+                    if (data.spreadsheet_url) {
+                        window.open(data.spreadsheet_url, '_blank');
+                    }
+                } else {
+                    showToast(data.error || 'Google Sheets export failed.', 'warning');
+                }
+            } catch (err) {
+                console.error('Export Error:', err);
+                showToast('Unable to connect to Google Sheets. Please check network connection.', 'warning');
+            } finally {
+                exportHistoryBtn.disabled = false;
+                exportHistoryBtn.innerHTML = originalHtml;
+            }
+        });
+    }
 });

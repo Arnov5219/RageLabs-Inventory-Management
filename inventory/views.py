@@ -64,6 +64,52 @@ def logout_view(request):
     messages.success(request, "You have been logged out.")
     return redirect('inventory:login')
 
+def account_view(request):
+    if not request.user.is_authenticated:
+        return redirect('inventory:login')
+
+    branch = request.current_branch
+    profile = getattr(request.user, 'employee_profile', None)
+    
+    # Calculate initials
+    full_name = request.user.get_full_name().strip()
+    display_name = full_name if full_name else request.user.username
+    parts = display_name.split()
+    if len(parts) >= 2:
+        initials = f"{parts[0][0]}{parts[1][0]}".upper()
+    elif len(display_name) >= 2:
+        initials = display_name[:2].upper()
+    else:
+        initials = display_name[:1].upper() if display_name else "U"
+
+    is_admin = request.user.is_superuser or request.user.is_staff
+    role_title = "Administrator" if is_admin else "Staff Member"
+
+    if profile and profile.branch:
+        assigned_branch = profile.branch.branch_name
+    elif branch:
+        assigned_branch = branch.branch_name
+    else:
+        assigned_branch = "All Branches"
+
+    google_sheet_id = branch.google_sheet_id if branch else None
+    google_sheet_url = f"https://docs.google.com/spreadsheets/d/{google_sheet_id}" if google_sheet_id else None
+
+    context = {
+        'initials': initials,
+        'display_name': display_name,
+        'username': request.user.username,
+        'email': request.user.email or "—",
+        'role_title': role_title,
+        'is_admin': is_admin,
+        'assigned_branch': assigned_branch,
+        'current_branch': branch,
+        'google_sheet_id': google_sheet_id,
+        'google_sheet_url': google_sheet_url,
+        'last_login': request.user.last_login,
+    }
+    return render(request, 'account/account.html', context)
+
 def switch_branch_view(request):
     if not (request.user.is_authenticated and (request.user.is_superuser or request.user.is_staff)):
         messages.error(request, "Access denied. Only administrators can switch branches.")
@@ -360,10 +406,24 @@ def _history_view(request, *, category, export_category, title, template_name, i
     is_filter_active = 'months' in request.GET
     branch = request.current_branch
 
+    category_param = request.GET.get('category', '').lower()
+    if category_param == 'all':
+        active_cat_tab = 'all'
+        cat_filter = Q(product__category__in=['Laundry Supplies', 'Accessories'])
+    elif category_param == 'supplies' or (not category_param and category == 'Laundry Supplies'):
+        active_cat_tab = 'supplies'
+        cat_filter = Q(product__category='Laundry Supplies')
+    elif category_param == 'accessories' or (not category_param and category == 'Accessories'):
+        active_cat_tab = 'accessories'
+        cat_filter = Q(product__category='Accessories')
+    else:
+        active_cat_tab = 'supplies' if is_supplies else 'accessories'
+        cat_filter = Q(product__category=category)
+
     # Query DailyInventory instead of StockHistory
     history_records = DailyInventory.objects.filter(
+        cat_filter,
         product__is_active=True,
-        product__category=category,
         branch=branch
     ).select_related('product').order_by('-date', '-id')
 
@@ -407,13 +467,24 @@ def _history_view(request, *, category, export_category, title, template_name, i
             is_all_branches = True
 
     open_sheet_url = None
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', '')
+
     if request.GET.get('export') == 'google_sheets':
         if is_all_branches:
-            messages.error(request, "Please select a specific branch on the dashboard before exporting history.")
+            err_text = "Please select a specific branch on the dashboard before exporting history."
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': err_text}, status=400)
+            messages.error(request, err_text)
         elif not selected_months:
-            messages.error(request, "Please select at least one month to export.")
+            err_text = "Please select at least one month to export."
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': err_text}, status=400)
+            messages.error(request, err_text)
         elif not history_records.exists():
-            messages.error(request, "No history records found for the selected months.")
+            err_text = "No history records found for the selected months."
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': err_text}, status=400)
+            messages.error(request, err_text)
         else:
             try:
                 sheet_id = history_spreadsheet_id(branch)
@@ -461,6 +532,15 @@ def _history_view(request, *, category, export_category, title, template_name, i
                     open_sheet_url = res_supplies.get('spreadsheet_url')
                 elif sheet_id:
                     open_sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
+
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'History successfully exported to Google Sheets',
+                        'spreadsheet_url': open_sheet_url,
+                        'branch': branch.branch_name if branch else None,
+                        'months': months_str
+                    })
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -474,12 +554,27 @@ def _history_view(request, *, category, export_category, title, template_name, i
                 else:
                     err_msg = f"Unable to connect to Google Sheets: {str(e)}"
                 
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': err_msg}, status=500)
+
                 messages.error(request, "Google Sheets export failed. Your inventory data was not affected.")
                 from django.conf import settings
                 import sys
                 if 'test' in sys.argv or getattr(settings, 'TESTING', False):
                     messages.error(request, err_msg)
             
+    prod_ids = [record.product_id for record in history_records]
+    sh_qs = StockHistory.objects.filter(
+        branch=branch,
+        product_id__in=prod_ids
+    ).select_related('user', 'product').order_by('-created_at', '-id')
+
+    sh_by_prod_date = {}
+    for sh in sh_qs:
+        key = (sh.product_id, sh.created_at.date())
+        if key not in sh_by_prod_date:
+            sh_by_prod_date[key] = sh
+
     rows = []
     for record in history_records:
         remaining_percentage = record.remaining_percentage
@@ -491,6 +586,44 @@ def _history_view(request, *, category, export_category, title, template_name, i
             status = "YELLOW"
         else:
             status = "RED"
+
+        latest_sh = sh_by_prod_date.get((record.product_id, record.date))
+        if latest_sh:
+            user_name = f"By {latest_sh.user.get_full_name() or latest_sh.user.username}" if latest_sh.user else "By System Admin"
+            time_str = latest_sh.created_at.strftime("%I:%M %p")
+            if latest_sh.change_type == 'ADD' or latest_sh.new_quantity > latest_sh.previous_quantity:
+                diff = latest_sh.quantity if latest_sh.quantity else (latest_sh.new_quantity - latest_sh.previous_quantity)
+                diff_str = f"{int(diff)}" if (diff % 1 == 0) else f"{diff:g}"
+                movement_label = f"+{diff_str} Added"
+                movement_class = "added"
+            else:
+                diff = latest_sh.quantity if latest_sh.quantity else (latest_sh.previous_quantity - latest_sh.new_quantity)
+                diff_str = f"{int(diff)}" if (diff % 1 == 0) else f"{diff:g}"
+                movement_label = f"-{diff_str} Used"
+                movement_class = "used"
+            was_stock = latest_sh.previous_quantity
+        else:
+            user_name = "By System Admin"
+            time_str = "09:00 AM"
+            if getattr(record, 'total_used', 0) and record.total_used > 0:
+                diff = record.total_used
+                diff_str = f"{int(diff)}" if (diff % 1 == 0) else f"{diff:g}"
+                movement_label = f"-{diff_str} Used"
+                movement_class = "used"
+                was_stock = record.closing_stock + record.total_used
+            elif getattr(record, 'total_added', 0) and record.total_added > 0:
+                diff = record.total_added
+                diff_str = f"{int(diff)}" if (diff % 1 == 0) else f"{diff:g}"
+                movement_label = f"+{diff_str} Added"
+                movement_class = "added"
+                was_stock = max(Decimal('0'), record.closing_stock - record.total_added)
+            else:
+                diff = record.closing_stock
+                diff_str = f"{int(diff)}" if (diff % 1 == 0) else f"{diff:g}"
+                movement_label = f"+{diff_str} Added"
+                movement_class = "added"
+                was_stock = Decimal('0')
+
         rows.append({
             'product': record.product,
             'date': record.date,
@@ -498,6 +631,11 @@ def _history_view(request, *, category, export_category, title, template_name, i
             'closing_stock': record.closing_stock,
             'remaining_percentage': remaining_percentage,
             'status': status,
+            'movement_label': movement_label,
+            'movement_class': movement_class,
+            'user_name': user_name,
+            'time_str': time_str,
+            'was_stock': was_stock,
         })
  
     context = {
@@ -506,6 +644,7 @@ def _history_view(request, *, category, export_category, title, template_name, i
         'is_supplies': is_supplies,
         'month_options': month_options,
         'open_sheet_url': open_sheet_url,
+        'active_cat_tab': active_cat_tab,
     }
     return render(request, template_name, context)
 

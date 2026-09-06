@@ -6,9 +6,10 @@ app_name = 'inventory'
 urlpatterns = [
     path('', views.dashboard_view, name='dashboard'),
     
-    # Authentication
+    # Authentication & Profile
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('account/', views.account_view, name='account'),
     path('branch/switch/', views.switch_branch_view, name='switch_branch'),
     
     # Category Browsing

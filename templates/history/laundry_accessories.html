@@ -1,24 +1,55 @@
 {% extends 'base.html' %}
 
-{% block title %}History of Laundry Accessories{% endblock %}
+{% block title %}History of Laundry Accessories - LaundryRage{% endblock %}
 
 {% block content %}
-<div class="page-title-area">
-    <div>
-        <h1>History of Laundry Accessories</h1>
-        <p>Audit trail of laundry accessories inventory status</p>
+<!-- History Page Header with Safe Spacing & Divider -->
+<div class="category-page-header history-page-header">
+    <div class="category-header-main">
+        <a href="{% url 'inventory:dashboard' %}" class="category-back-btn" aria-label="Back to Dashboard">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+        </a>
+        <div>
+            <h1 class="category-page-title">History</h1>
+            <div class="category-branch-sub">
+                📍 {{ request.current_branch.branch_name }} Branch · Daily Closing & Audit Trail
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Month Filter and Google Sheets Export Form -->
-<div class="history-filter-card" style="background-color: var(--surface-card); border: 1px solid var(--border-color); border-radius: var(--radius-card); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-premium);">
-    <form method="get" action="" class="history-filter-form">
-        <div class="form-group" style="margin-bottom: 0; flex-grow: 1; min-width: 250px;">
-            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">Select Month(s)</label>
-            <div class="months-checkbox-grid" style="display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0.5rem 0;">
+<!-- Category Filter Tabs (Phase 6 & 7) -->
+<div class="history-tabs-container">
+    <a href="{% url 'inventory:history_laundry_supplies' %}?category=all{% for m in selected_months %}&months={{ m }}{% endfor %}" class="history-tab-btn {% if active_cat_tab == 'all' %}active{% endif %}" id="tab-all-logs">
+        All Logs
+    </a>
+    <a href="{% url 'inventory:history_laundry_supplies' %}?category=supplies{% for m in selected_months %}&months={{ m }}{% endfor %}" class="history-tab-btn {% if active_cat_tab == 'supplies' %}active{% endif %}" id="tab-supplies-logs">
+        Supplies
+    </a>
+    <a href="{% url 'inventory:history_laundry_accessories' %}?category=accessories{% for m in selected_months %}&months={{ m }}{% endfor %}" class="history-tab-btn {% if active_cat_tab == 'accessories' %}active{% endif %}" id="tab-accessories-logs">
+        Accessories
+    </a>
+</div>
+
+<!-- Month Filter & Export Form (Phase 5 & 6) -->
+<div class="history-filter-card" style="background-color: var(--surface-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.75rem; box-shadow: var(--shadow-sm);">
+    <form method="get" action="" class="history-filter-form" style="display: flex; flex-direction: column; gap: 1.15rem;">
+        {% if active_cat_tab %}
+        <input type="hidden" name="category" value="{{ active_cat_tab }}">
+        {% endif %}
+
+        <!-- Select Month(s) -->
+        <div class="form-group" style="margin-bottom: 0;">
+            <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                Select Month(s)
+            </label>
+            <div class="months-checkbox-grid" style="display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0.25rem 0;">
                 {% for option in month_options %}
-                <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 500; color: var(--text-primary); cursor: pointer; user-select: none;">
-                    <input type="checkbox" name="months" value="{{ option.value }}" {% if option.checked %}checked{% endif %} style="accent-color: var(--accent-gold); width: 1.1rem; height: 1.1rem; cursor: pointer;">
+                <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); cursor: pointer; user-select: none;">
+                    <input type="checkbox" name="months" value="{{ option.value }}" {% if option.checked %}checked{% endif %} style="accent-color: var(--accent-gold); width: 1.15rem; height: 1.15rem; cursor: pointer;">
                     {{ option.label }}
                 </label>
                 {% empty %}
@@ -26,82 +57,48 @@
                 {% endfor %}
             </div>
         </div>
-        <div class="history-filter-buttons">
-            <button type="submit" class="btn-secondary" style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth);">
+
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
+            <button type="submit" class="btn-secondary" style="height: 2.6rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: #F8FAFC;">
                 Apply Filter
             </button>
-            <button type="submit" name="export" value="google_sheets" class="btn-primary" style="height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: var(--transition-smooth); border: none;">
-                Export to Google Sheets
+            <button type="submit" name="export" value="google_sheets" id="btn-export-history" class="btn-primary" style="height: 2.6rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; padding: 0 1.5rem; border-radius: var(--radius-pill); font-weight: 700; cursor: pointer; border: none; background: var(--accent-gold); color: #fff;">
+                <span class="export-icon" style="font-size: 1rem; line-height: 1;">📤</span>
+                <span class="export-text">Export History to Google Sheets</span>
             </button>
         </div>
     </form>
 </div>
 
-<div class="history-table-card">
-    <div class="table-responsive">
-        <table class="table-history">
-            <thead>
-                <tr>
-                    <th id="th-date" style="width: 15%;">Date</th>
-                    <th id="th-product" style="width: 30%;">Product</th>
-                    <th id="th-base" style="width: 15%;">Base Stock</th>
-                    <th id="th-closing" style="width: 15%;">Closing Stock</th>
-                    <th id="th-percentage" style="width: 13%;">Remaining %</th>
-                    <th id="th-status" style="width: 12%;">Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if rows %}
-                    {% for row in rows %}
-                    <tr class="history-row" data-product-id="{{ row.product.id }}">
-                        <td class="history-date">{{ row.date|date:"Y-m-d" }}</td>
-                        <td class="history-product-cell">
-                            <a href="{% url 'inventory:product_history_detail' row.product.id %}?date={{ row.date|date:'Y-m-d' }}" style="color: var(--accent-dark); font-weight: 600; text-decoration: none; transition: var(--transition-smooth);" class="product-drilldown-link">
-                                {{ row.product.name }}
-                            </a>
-                        </td>
-                        <td>
-                            {% if row.base_stock > 0 %}
-                                {{ row.base_stock|floatformat:"0" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td style="font-weight: 600; color: var(--text-primary);">
-                            {{ row.closing_stock|floatformat:"0" }}
-                        </td>
-                        <td style="font-weight: 600;">
-                            {% if row.remaining_percentage is not None %}
-                                {{ row.remaining_percentage|floatformat:"0" }}%
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="status-badge {% if row.status == 'RED' %}status-red{% elif row.status == 'YELLOW' %}status-yellow{% elif row.status == 'GREEN' %}status-green{% else %}status-gray{% endif %}">
-                                {% if row.status == 'RED' %}
-                                    LOW
-                                {% elif row.status == 'YELLOW' %}
-                                    MODERATE
-                                {% elif row.status == 'GREEN' %}
-                                    SUFFICIENT
-                                {% else %}
-                                    NO BASE
-                                {% endif %}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-                            No history logs available for laundry accessories.
-                        </td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+<!-- History Cards Feed (Phase 6 & 8) -->
+<div class="history-cards-container">
+    {% if rows %}
+        {% for row in rows %}
+        <div class="history-item-card" data-product-id="{{ row.product.id }}">
+            <div class="history-card-header">
+                <a href="{% url 'inventory:product_history_detail' row.product.id %}?date={{ row.date|date:'Y-m-d' }}" class="history-card-product-name">
+                    {{ row.product.name }}
+                </a>
+                <span class="stock-movement-badge {{ row.movement_class }}">
+                    {{ row.movement_label }}
+                </span>
+            </div>
+            <div class="history-card-meta">
+                {{ row.user_name }} · {{ row.time_str }}
+                <span class="history-meta-date">({{ row.date|date:"Y-m-d" }})</span>
+            </div>
+            <div class="history-card-divider"></div>
+            <div class="history-card-closing">
+                Closing: <strong>{{ row.closing_stock|floatformat:"0" }}</strong>
+                <span class="history-card-was">(was {{ row.was_stock|floatformat:"0" }})</span>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state" style="text-align: center; color: var(--text-muted); padding: 3rem; background: var(--surface-card); border-radius: 14px; border: 1px solid var(--border-color);">
+            <p style="margin: 0; font-size: 0.95rem; font-weight: 600;">No history logs available for laundry accessories.</p>
+        </div>
+    {% endif %}
 </div>
 
 {% if open_sheet_url %}

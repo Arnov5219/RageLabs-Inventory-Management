@@ -158,27 +158,314 @@
         gap: 0.5rem;
         padding-top: 1rem;
     }
+
+    /* Immersive Dashboard Hero Banner Styles */
+    .dashboard-hero-banner {
+        position: relative;
+        width: 100%;
+        min-height: 275px;
+        background-image: 
+            linear-gradient(180deg, rgba(15, 23, 42, 0.65) 0%, rgba(15, 23, 42, 0.32) 40%, rgba(255, 255, 255, 0.1) 68%, rgba(255, 255, 255, 0.9) 100%),
+            linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, transparent 60%),
+            url("{% static 'images/dashboard_hero.jpg' %}");
+        background-size: cover;
+        background-position: center 25%;
+        border-radius: 24px;
+        padding: 1.75rem 2rem 2rem 2rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        margin-bottom: 2.25rem;
+        box-sizing: border-box;
+    }
+    .hero-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 50;
+        margin-bottom: 1.5rem;
+        gap: 0.6rem;
+    }
+    .hero-dropdown-wrapper {
+        position: relative;
+        display: inline-block;
+        z-index: 100;
+    }
+    .hero-control-pill {
+        background: rgba(15, 23, 42, 0.62);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 9999px;
+        padding: 0.35rem 0.85rem;
+        color: #FFFFFF;
+        font-size: 0.82rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        cursor: pointer;
+        height: 34px;
+        box-sizing: border-box;
+        outline: none;
+    }
+    .hero-control-pill:hover,
+    .hero-control-pill:focus-visible {
+        background: rgba(15, 23, 42, 0.85);
+        border-color: rgba(255, 255, 255, 0.45);
+        color: #FFFFFF;
+    }
+    .hero-custom-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        min-width: 205px;
+        background: rgba(15, 23, 42, 0.98);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 14px;
+        padding: 0.45rem;
+        box-shadow: 0 20px 45px -4px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.12);
+        display: none;
+        flex-direction: column;
+        gap: 0.25rem;
+        z-index: 500;
+        animation: heroDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .hero-custom-dropdown.open {
+        display: flex;
+    }
+    @keyframes heroDropdownFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-6px) scale(0.97);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .hero-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.6rem 0.85rem;
+        border-radius: 10px;
+        color: rgba(255, 255, 255, 0.88);
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 600;
+        transition: all 0.15s ease;
+    }
+    .hero-dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #FFFFFF;
+        transform: translateX(2px);
+    }
+    .hero-dropdown-item.active {
+        background: rgba(234, 179, 8, 0.22);
+        color: #FDE047;
+        font-weight: 700;
+    }
+    .dropdown-item-check {
+        margin-left: auto;
+        color: #FDE047;
+    }
+    .user-avatar-circle {
+        width: 20px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.22);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+    }
+    .hero-content-area {
+        position: relative;
+        z-index: 5;
+        margin-top: auto;
+    }
+    .hero-brand-row {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+    }
+    .hero-brand-icon {
+        width: 48px;
+        height: 48px;
+        background: #0F172A;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 0 1.5px rgba(234, 179, 8, 0.5);
+        flex-shrink: 0;
+        overflow: hidden;
+        padding: 6px;
+    }
+    .hero-fav-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    }
+    .hero-brand-title {
+        font-family: var(--font-heading);
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #FFFFFF;
+        letter-spacing: -0.025em;
+        line-height: 1.1;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+    .hero-brand-subtitle {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 600;
+        margin-top: 0.15rem;
+        letter-spacing: -0.1px;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+    .hero-tagline {
+        font-family: var(--font-heading);
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #0F172A !important;
+        line-height: 1.22;
+        margin: 0;
+        letter-spacing: -0.025em;
+    }
+    @media (max-width: 768px) {
+        .dashboard-hero-banner {
+            margin: 0 -0.85rem 1.75rem -0.85rem !important;
+            width: calc(100% + 1.7rem) !important;
+            border-radius: 0 0 28px 28px !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+            padding: max(1.25rem, calc(env(safe-area-inset-top) + 0.85rem)) 1.25rem 1.85rem 1.25rem !important;
+            min-height: 280px !important;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+        }
+        .hero-top-row {
+            margin-bottom: 1.25rem;
+        }
+        .hero-control-pill {
+            font-size: 0.78rem;
+            padding: 0.3rem 0.7rem;
+            height: 32px;
+        }
+        .hero-brand-title {
+            font-size: 1.45rem;
+        }
+        .hero-tagline {
+            font-size: 1.45rem;
+            line-height: 1.24;
+            max-width: 100%;
+        }
+    }
+    @media (max-width: 360px) {
+        .dashboard-hero-banner {
+            margin: 0 -0.5rem 1.5rem -0.5rem !important;
+            width: calc(100% + 1rem) !important;
+            padding: max(1rem, calc(env(safe-area-inset-top) + 0.65rem)) 0.85rem 1.5rem 0.85rem !important;
+            min-height: 250px !important;
+        }
+        .hero-tagline {
+            font-size: 1.25rem;
+        }
+    }
 </style>
 
-<!-- Page Header Area -->
-<div class="page-title-area" style="margin-bottom: 2.5rem;">
-    <div>
-        <h1 style="font-family: var(--font-heading); font-size: 2.5rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.025em;">
-            Inventory Dashboard
-        </h1>
-        <p style="color: #475569; font-size: 1rem; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
-            {% if request.user.is_superuser or request.user.is_staff %}
-                {% if is_all_branches %}
-                    🌐 All Branches
-                {% else %}
-                    📍 {{ active_branch.branch_name }}
-                {% endif %}
-            {% else %}
-                📍 {{ active_branch.branch_name }}
-            {% endif %}
-            <span style="color: #cbd5e1;">&middot;</span>
-            <span style="color: #94a3b8; font-weight: 500;">Updated {{ latest_time }}</span>
-        </p>
+<!-- IMMERSIVE HERO BANNER SECTION (Approved Reference Design) -->
+<div class="dashboard-hero-banner">
+    <!-- Top Floating Action Pills (Branch Left & Staff/Admin Right) -->
+    <div class="hero-top-row">
+        {% if request.user.is_superuser or request.user.is_staff %}
+        <div class="hero-dropdown-wrapper" id="branch-dropdown-wrapper">
+            <button type="button" class="hero-control-pill" id="branch-dropdown-btn" aria-haspopup="true" aria-expanded="false" title="Active Branch · Click to switch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>
+                    {% if not request.session.selected_branch_id %}All Branches{% else %}{{ active_branch.branch_name }}{% endif %}
+                </span>
+                <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </button>
+
+            <!-- Custom Modern Dropdown Menu -->
+            <div class="hero-custom-dropdown" id="branch-dropdown-menu" role="menu">
+                <a href="{% url 'inventory:switch_branch' %}?branch_id=all" class="hero-dropdown-item {% if not request.session.selected_branch_id %}active{% endif %}" role="menuitem">
+                    <span>🌐</span>
+                    <span>All Branches</span>
+                    {% if not request.session.selected_branch_id %}
+                    <svg class="dropdown-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    {% endif %}
+                </a>
+                {% for b in all_branches %}
+                <a href="{% url 'inventory:switch_branch' %}?branch_id={{ b.id }}" class="hero-dropdown-item {% if request.session.selected_branch_id == b.id %}active{% endif %}" role="menuitem">
+                    <span>📍</span>
+                    <span>{{ b.branch_name }}</span>
+                    {% if request.session.selected_branch_id == b.id %}
+                    <svg class="dropdown-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="hero-control-pill" title="Active Branch">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span>{{ active_branch.branch_name }}</span>
+        </div>
+        {% endif %}
+
+        <a href="{% url 'inventory:logout' %}" class="hero-control-pill" title="Logged in as {% if request.user.is_superuser or request.user.is_staff %}Admin{% else %}Staff{% endif %} · Click to Logout">
+            <span class="user-avatar-circle">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </span>
+            <span>{% if request.user.is_superuser or request.user.is_staff %}Admin{% else %}Staff{% endif %}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </a>
+    </div>
+
+    <!-- Hero Brand & Tagline Content -->
+    <div class="hero-content-area">
+        <div class="hero-brand-row">
+            <div class="hero-brand-icon">
+                <img src="{% static 'images/favicon.png' %}" alt="LaundryRage" class="hero-fav-img">
+            </div>
+            <div>
+                <div class="hero-brand-title">LaundryRage</div>
+                <div class="hero-brand-subtitle">Inventory Management</div>
+            </div>
+        </div>
+
+        <h1 class="hero-tagline">Keep Supplies Flowing,<br>Always Ready.</h1>
     </div>
 </div>
 
@@ -187,7 +474,10 @@
     <!-- Low Stock Card -->
     <div class="metric-summary-card low-stock" id="metric-card-low">
         <div>
-            <div class="card-title">Low Stock Alert</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div class="card-title" style="margin-bottom: 0;">Low Stock Alert</div>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #dc2626; display: flex; align-items: center; gap: 0.2rem;">View &rarr;</span>
+            </div>
             <div class="card-value">
                 {{ low_count }} <span class="card-value-label">Product{% if low_count != 1 %}s{% endif %}</span>
             </div>
@@ -198,7 +488,10 @@
     <!-- Moderate Stock Card -->
     <div class="metric-summary-card moderate-stock" id="metric-card-mod">
         <div>
-            <div class="card-title">Moderate Stock</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div class="card-title" style="margin-bottom: 0;">Moderate Stock</div>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #ea580c; display: flex; align-items: center; gap: 0.2rem;">View &rarr;</span>
+            </div>
             <div class="card-value">
                 {{ mod_count }} <span class="card-value-label">Product{% if mod_count != 1 %}s{% endif %}</span>
             </div>
@@ -209,7 +502,10 @@
     <!-- Sufficient Stock Card -->
     <div class="metric-summary-card sufficient-stock" id="metric-card-suff">
         <div>
-            <div class="card-title">Sufficient Stock</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div class="card-title" style="margin-bottom: 0;">Sufficient Stock</div>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #059669; display: flex; align-items: center; gap: 0.2rem;">View &rarr;</span>
+            </div>
             <div class="card-value">
                 {{ suff_count }} <span class="card-value-label">Product{% if suff_count != 1 %}s{% endif %}</span>
             </div>
@@ -685,6 +981,25 @@
                 }
             });
         });
+
+        // Modern Custom Branch Dropdown
+        const branchBtn = document.getElementById('branch-dropdown-btn');
+        const branchMenu = document.getElementById('branch-dropdown-menu');
+        if (branchBtn && branchMenu) {
+            branchBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                branchMenu.classList.toggle('open');
+                const isOpen = branchMenu.classList.contains('open');
+                branchBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!branchBtn.contains(e.target) && !branchMenu.contains(e.target)) {
+                    branchMenu.classList.remove('open');
+                    branchBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

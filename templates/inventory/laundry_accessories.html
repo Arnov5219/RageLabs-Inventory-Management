@@ -4,11 +4,24 @@
 {% block title %}Laundry Accessories - LaundryRage{% endblock %}
 
 {% block content %}
-<div class="page-title-area">
-    <div>
-        <h1>Laundry Accessories</h1>
-        <p>Manage real-time logistics, adjustment controls, and stock levels</p>
+<div class="category-page-header">
+    <div class="category-header-main">
+        <a href="{% url 'inventory:dashboard' %}" class="category-back-btn" aria-label="Back to Dashboard">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+        </a>
+        <div>
+            <h1 class="category-page-title">Laundry Accessories</h1>
+            <div class="category-branch-sub">
+                📍 {% if active_branch %}{{ active_branch.branch_name }}{% else %}{{ request.current_branch.branch_name }}{% endif %} Branch
+            </div>
+        </div>
     </div>
+    <span class="category-item-count-badge">
+        {{ products|length }} Item{% if products|length != 1 %}s{% endif %}
+    </span>
 </div>
 
 {% if products %}

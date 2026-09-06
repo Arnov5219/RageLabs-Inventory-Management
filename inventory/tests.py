@@ -661,6 +661,29 @@ class GoogleSheetsExportAndMonthFilterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Unable to connect to Google Sheets: Connection/Timeout error (Connection Refused)")
         self.assertNotContains(response, "Traceback")
+
+    @patch('inventory.google_sheets.requests.post')
+    @patch.dict('os.environ', {
+        'GOOGLE_APPS_SCRIPT_URL': 'http://test-apps-script.local/',
+        'APPS_SCRIPT_SECRET': 'test_secret_abc',
+    })
+    def test_export_ajax_response(self, mock_post):
+        """AJAX request with export=google_sheets returns JsonResponse."""
+        url = reverse('inventory:history_laundry_supplies')
+        from unittest.mock import MagicMock
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'success': True}
+        mock_post.return_value = mock_response
+
+        response = self.client.get(
+            f"{url}?months=2026-08&export=google_sheets",
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(response.status_code, 200)
+        json_data = response.json()
+        self.assertTrue(json_data['success'])
+        self.assertEqual(json_data['message'], 'History successfully exported to Google Sheets')
 # ===========================================================================
 # Inventory Refill Request Tests
 # ===========================================================================
@@ -941,3 +964,90 @@ class InventoryRefillRequestTests(TestCase):
         self.client.force_login(self.staff_user)
         resp = self.client.get(self.url)
         self.assertEqual(resp.status_code, 405)
+
+
+class AccountPageTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.branch, _ = Branch.objects.get_or_create(
+            branch_code="OD3301LR-JGM",
+            defaults={
+                "branch_name": "Jagamara",
+                "google_sheet_id": "test-sheet-id-123",
+                "active": True
+            }
+        )
+        self.branch.google_sheet_id = "test-sheet-id-123"
+        self.branch.save()
+        self.staff_user = User.objects.create_user(
+            username="staff_john",
+            password="testpassword",
+            first_name="John",
+            last_name="Doe",
+            is_staff=False
+        )
+        EmployeeProfile.objects.create(
+            user=self.staff_user,
+            branch=self.branch
+        )
+        self.admin_user = User.objects.create_user(
+            username="admin_jane",
+            password="adminpassword",
+            first_name="Jane",
+            last_name="Smith",
+            is_staff=True
+        )
+        EmployeeProfile.objects.create(
+            user=self.admin_user,
+            branch=self.branch
+        )
+        self.account_url = reverse("inventory:account")
+
+    def test_account_requires_login(self):
+        """Unauthenticated user accessing /account/ should be redirected to login."""
+        resp = self.client.get(self.account_url)
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("login", resp.url)
+
+    def test_account_view_staff_user(self):
+        """Staff member view contains initials, role, branch, sign out, and bottom nav Account item."""
+        self.client.force_login(self.staff_user)
+        resp = self.client.get(self.account_url)
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode("utf-8")
+
+        # Bottom nav checks
+        self.assertIn('id="mobile-nav-account"', content)
+        self.assertIn('class="nav-label">Account<', content)
+        self.assertNotIn('class="nav-label">Logout<', content)
+
+        # Profile info checks
+        self.assertIn("John Doe", content)
+        self.assertIn("JD", content)  # Initials
+        self.assertIn("Staff Member", content)
+        self.assertIn("Jagamara", content)
+
+        # Admin panel action card
+        self.assertIn("Open Admin Panel", content)
+        self.assertIn(reverse("admin:index"), content)
+
+        # Google sheet info
+        self.assertIn("Open Connected Sheet", content)
+        self.assertIn("test-sheet-id-123", content)
+
+        # Sign Out button
+        self.assertIn("Sign Out", content)
+        self.assertIn(reverse("inventory:logout"), content)
+
+    def test_account_view_admin_user(self):
+        """Admin view contains Administrator role and Open Admin Panel action card."""
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(self.account_url)
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode("utf-8")
+
+        self.assertIn("Open Admin Panel", content)
+        self.assertIn("Administrator", content)
+        self.assertIn("JS", content)  # Jane Smith initials
+        self.assertIn(reverse("admin:index"), content)
+
