@@ -20,7 +20,16 @@ SECRET_KEY = 'django-insecure-wyls@v9sz)s1v2e59449n)-#_co%g*q_eq42hm8gz25*8$pmab
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.trycloudflare.com',
+    'https://*.localtunnel.me',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 import os
 
 GOOGLE_SHEETS_EXPORT_URL = os.getenv("GOOGLE_SHEETS_EXPORT_URL") or os.getenv("GOOGLE_APPS_SCRIPT_URL") or "https://script.google.com/macros/s/AKfycbxUQchzN4FB0KhqPxP5duzplvlA9Ylk-8jR7yUGipLXB-u-R3dZtCvIuIhWq0BORG2f/exec"

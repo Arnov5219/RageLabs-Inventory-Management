@@ -22,3 +22,10 @@ env/
 # OS files
 .DS_Store
 Thumbs.db
+
+firebase-credentials.json
+cloudflared.exe
+node_modules/
+www/
+android/
+*.apk

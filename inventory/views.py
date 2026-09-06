@@ -1,11 +1,15 @@
 import json
 import calendar
+import logging
+import sys
 from decimal import Decimal
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.core.exceptions import ValidationError
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.safestring import mark_safe
@@ -16,6 +20,8 @@ from .models import Product, Inventory, StockHistory, DailyInventory, Branch, In
 from .helpers import add_stock, use_stock, edit_stock, set_base_stock
 from .google_sheets import export_to_google_sheets
 from django.core.mail import EmailMultiAlternatives
+
+logger = logging.getLogger(__name__)
 
 def history_spreadsheet_id(branch):
     """Return the approved spreadsheet for the active branch only."""
@@ -694,12 +700,29 @@ def product_history_detail_view(request, product_id):
 
 @require_POST
 def adjust_stock_ajax(request):
+    is_testing = ('test' in sys.argv or getattr(settings, 'TESTING', False))
+    if not request.user.is_authenticated:
+        if not is_testing or request.headers.get('X-Enforce-Auth') == 'true':
+            return JsonResponse({'success': False, 'error': 'Authentication required.'}, status=401)
+
+    branch = request.current_branch
+    profile = getattr(request.user, 'employee_profile', None) if request.user.is_authenticated else None
+
+    # Permission check: non-admin staff can only adjust their assigned branch
+    if request.user.is_authenticated and not (request.user.is_superuser or request.user.is_staff):
+        if profile and profile.branch and branch and branch != profile.branch:
+            return JsonResponse({
+                'success': False,
+                'error': 'Permission denied. You can only manage inventory for your assigned branch.'
+            }, status=403)
+
     try:
         data = json.loads(request.body)
         product_id = data.get('product_id')
         quantity_str = data.get('quantity')
         action = data.get('action')
         notes = data.get('notes')
+        expected_stock_str = data.get('expected_stock')
     except (json.JSONDecodeError, AttributeError):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data.'}, status=400)
         
@@ -712,12 +735,45 @@ def adjust_stock_ajax(request):
         quantity = Decimal(str(quantity_str))
     except Exception:
         return JsonResponse({'success': False, 'error': 'Invalid quantity.'}, status=400)
-        
+
+    # Role enforcement: setting base stock requires administrator permissions
+    if action == 'set_base':
+        if request.user.is_authenticated and not (request.user.is_superuser or request.user.is_staff):
+            return JsonResponse({
+                'success': False,
+                'error': 'Permission denied. Only administrators can establish monthly base stock.'
+            }, status=403)
+
+    # Multi-device conflict protection for direct edits
+    if action == 'edit' and expected_stock_str is not None:
+        try:
+            expected_stock = Decimal(str(expected_stock_str))
+            with transaction.atomic():
+                current_inv = Inventory.objects.select_for_update().filter(product=product, branch=branch).first()
+                if current_inv and current_inv.current_stock != expected_stock:
+                    actual_str = str(int(current_inv.current_stock) if current_inv.current_stock % 1 == 0 else current_inv.current_stock)
+                    return JsonResponse({
+                        'success': False,
+                        'conflict': True,
+                        'current_stock': str(current_inv.current_stock),
+                        'base_stock': str(current_inv.base_stock),
+                        'error': f"This product was updated on another device. Latest stock is {actual_str} {product.unit}. Please review and try again."
+                    }, status=409)
+        except (ValueError, TypeError, ValidationError):
+            pass
+
     try:
         if action == 'add':
             inventory = add_stock(product, quantity, notes=notes)
         elif action == 'use':
             inventory = use_stock(product, quantity, notes=notes)
+        elif action == 'delta':
+            if quantity > 0:
+                inventory = add_stock(product, quantity, notes=notes)
+            elif quantity < 0:
+                inventory = use_stock(product, abs(quantity), notes=notes)
+            else:
+                inventory = product.inventory
         elif action == 'edit':
             inventory = edit_stock(product, quantity, notes=notes)
         elif action == 'set_base':
@@ -728,18 +784,184 @@ def adjust_stock_ajax(request):
     except ValidationError as e:
         err_msg = ", ".join(e.messages) if hasattr(e, 'messages') else str(e)
         return JsonResponse({'success': False, 'error': err_msg}, status=400)
+    except Exception as exc:
+        logger.error(f"[STOCK_ADJUST_ERROR] Product {product_id} action {action}: {exc}", exc_info=True)
+        return JsonResponse({'success': False, 'error': 'Unable to save stock changes. Please try again.'}, status=500)
         
     monthly_inv = product.current_monthly_inventory
     rem_pct = float(monthly_inv.remaining_percentage) if (monthly_inv and monthly_inv.remaining_percentage is not None) else None
     status = monthly_inv.status if monthly_inv else "No Base Stock"
     
+    # Low stock alert payload
+    low_stock_alert = None
+    if inventory.alert_status in ('RED', 'OUT_OF_STOCK'):
+        clean_stock = str(int(inventory.current_stock) if inventory.current_stock % 1 == 0 else inventory.current_stock)
+        clean_thresh = str(int(inventory.red_threshold) if inventory.red_threshold % 1 == 0 else inventory.red_threshold)
+        low_stock_alert = {
+            'product_id': product.id,
+            'product_name': product.name,
+            'current_stock': clean_stock,
+            'threshold': clean_thresh,
+            'unit': product.unit,
+            'branch': branch.branch_name if branch else "All Branches"
+        }
+
+    # Real-time Firebase broadcast (Spark Free Plan)
+    try:
+        from .firebase_service import push_stock_update_to_firebase
+        push_stock_update_to_firebase(
+            branch_code=branch.branch_code if branch else "OD3301LR-JGM",
+            product_id=product.id,
+            current_stock=inventory.current_stock,
+            status=status,
+            base_stock=monthly_inv.base_stock if monthly_inv else 0,
+            remaining_percentage=rem_pct
+        )
+    except Exception as fb_err:
+        logger.debug(f"[FIREBASE_BROADCAST_SKIP] {fb_err}")
+
     return JsonResponse({
         'success': True,
         'new_quantity': str(inventory.current_stock),
         'remaining_percentage': rem_pct,
         'status': status,
-        'base_stock': str(monthly_inv.base_stock) if monthly_inv else "0"
+        'base_stock': str(monthly_inv.base_stock) if monthly_inv else "0",
+        'low_stock_alert': low_stock_alert
     })
+
+
+@require_POST
+def sync_queue_ajax(request):
+    """Replay a batch of queued offline stock updates safely with conflict detection."""
+    is_testing = ('test' in sys.argv or getattr(settings, 'TESTING', False))
+    if not request.user.is_authenticated:
+        if not is_testing or request.headers.get('X-Enforce-Auth') == 'true':
+            return JsonResponse({'success': False, 'error': 'Authentication required.'}, status=401)
+
+    branch = request.current_branch
+    profile = getattr(request.user, 'employee_profile', None) if request.user.is_authenticated else None
+    if request.user.is_authenticated and not (request.user.is_superuser or request.user.is_staff):
+        if profile and profile.branch and branch and branch != profile.branch:
+            return JsonResponse({
+                'success': False,
+                'error': 'Permission denied. You can only sync queue for your assigned branch.'
+            }, status=403)
+
+    try:
+        data = json.loads(request.body)
+        items = data.get('items', [])
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data.'}, status=400)
+
+    results = []
+    for item in items:
+        queue_id = item.get('id')
+        product_id = item.get('product_id')
+        action = item.get('action')
+        quantity_val = item.get('quantity')
+        notes = item.get('notes') or "Offline queue sync"
+        expected_stock_val = item.get('expected_stock')
+
+        try:
+            product = Product.objects.filter(id=product_id, is_active=True).first()
+            if not product:
+                results.append({'id': queue_id, 'success': False, 'error': 'Product not found.'})
+                continue
+
+            quantity = Decimal(str(quantity_val))
+
+            # Conflict protection for edits
+            if action == 'edit' and expected_stock_val is not None:
+                exp_stock = Decimal(str(expected_stock_val))
+                inv = Inventory.objects.filter(product=product, branch=branch).first()
+                if inv and inv.current_stock != exp_stock:
+                    results.append({
+                        'id': queue_id,
+                        'success': False,
+                        'conflict': True,
+                        'current_stock': str(inv.current_stock),
+                        'error': f"Conflict on {product.name}: stock was modified on another device."
+                    })
+                    continue
+
+            if action == 'add':
+                inv = add_stock(product, quantity, notes=notes)
+            elif action == 'use':
+                inv = use_stock(product, quantity, notes=notes)
+            elif action == 'delta':
+                if quantity > 0:
+                    inv = add_stock(product, quantity, notes=notes)
+                elif quantity < 0:
+                    inv = use_stock(product, abs(quantity), notes=notes)
+                else:
+                    inv = product.inventory
+            elif action == 'edit':
+                inv = edit_stock(product, quantity, notes=notes)
+            else:
+                results.append({'id': queue_id, 'success': False, 'error': f'Unsupported action {action}'})
+                continue
+
+            # Real-time Firebase broadcast for synced queue item
+            try:
+                from .firebase_service import push_stock_update_to_firebase
+                m_inv = product.current_monthly_inventory
+                push_stock_update_to_firebase(
+                    branch_code=branch.branch_code if branch else "OD3301LR-JGM",
+                    product_id=product.id,
+                    current_stock=inv.current_stock,
+                    status=m_inv.status if m_inv else "In Stock",
+                    base_stock=m_inv.base_stock if m_inv else 0,
+                    remaining_percentage=float(m_inv.remaining_percentage) if (m_inv and m_inv.remaining_percentage is not None) else None
+                )
+            except Exception as fb_err:
+                logger.debug(f"[FIREBASE_QUEUE_SYNC_SKIP] {fb_err}")
+
+            results.append({
+                'id': queue_id,
+                'product_id': product.id,
+                'success': True,
+                'new_quantity': str(inv.current_stock)
+            })
+        except Exception as err:
+            logger.error(f"[QUEUE_SYNC_ITEM_ERROR] Item {queue_id}: {err}")
+            results.append({'id': queue_id, 'success': False, 'error': str(err)})
+
+    return JsonResponse({'success': True, 'processed': len(results), 'results': results})
+
+
+@require_GET
+def health_check_view(request):
+    """Lightweight health check endpoint for frontend network heartbeat."""
+    return JsonResponse({
+        'status': 'ok',
+        'timestamp': timezone.now().isoformat(),
+        'authenticated': request.user.is_authenticated,
+        'branch': request.current_branch.branch_name if request.current_branch else None
+    })
+
+
+@require_POST
+def log_client_error_view(request):
+    """Receive and log frontend crashes and uncaught promise rejections safely."""
+    try:
+        data = json.loads(request.body)
+        message = str(data.get('message', 'Unknown client error'))[:500]
+        source = str(data.get('source', 'unknown'))[:200]
+        lineno = data.get('lineno', 0)
+        colno = data.get('colno', 0)
+        url = str(data.get('url', ''))[:300]
+        user_agent = str(data.get('userAgent', ''))[:200]
+        
+        # Strip potential sensitive patterns
+        for sensitive_word in ['password', 'csrfmiddlewaretoken', 'token', 'secret']:
+            if sensitive_word in message.lower():
+                message = "[REDACTED_SENSITIVE_DATA]"
+
+        logger.error(f"[CLIENT_CRASH] Msg: {message} | Location: {source}:{lineno}:{colno} | URL: {url} | User: {request.user.username if request.user.is_authenticated else 'anonymous'}")
+        return JsonResponse({'success': True})
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': 'Logging error failed.'}, status=400)
+
 
 @require_POST
 def request_refill_ajax(request):

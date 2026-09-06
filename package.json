@@ -1,0 +1,27 @@
+{
+  "name": "ragelabs-inventory-management",
+  "version": "1.0.0",
+  "description": "A modern Django-based inventory management system designed for tracking laundry supplies and accessories, featuring real-time stock adjustments, search/filtering, comprehensive audit histories, and seamless Google Sheets integration for daily reporting.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Arnov5219/RageLabs-Inventory-Management.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Arnov5219/RageLabs-Inventory-Management/issues"
+  },
+  "homepage": "https://github.com/Arnov5219/RageLabs-Inventory-Management#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/local-notifications": "^8.3.1"
+  }
+}

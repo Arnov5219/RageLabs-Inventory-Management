@@ -1051,3 +1051,205 @@ class AccountPageTests(TestCase):
         self.assertIn("JS", content)  # Jane Smith initials
         self.assertIn(reverse("admin:index"), content)
 
+
+class ProductionReadinessTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.branch_jgm, _ = Branch.objects.get_or_create(
+            branch_code="OD3301LR-JGM",
+            defaults={"branch_name": "Jagamara", "active": True}
+        )
+        self.branch_csp, _ = Branch.objects.get_or_create(
+            branch_code="OD3302LR-CSP",
+            defaults={"branch_name": "C. Spur", "active": True}
+        )
+        self.staff_user = User.objects.create_user(
+            username="staff_member_1",
+            password="testpassword",
+            first_name="Sam",
+            last_name="Staff",
+            is_staff=False
+        )
+        EmployeeProfile.objects.create(
+            user=self.staff_user,
+            branch=self.branch_jgm
+        )
+        self.admin_user = User.objects.create_user(
+            username="admin_user_1",
+            password="adminpassword",
+            first_name="Alex",
+            last_name="Admin",
+            is_staff=True
+        )
+        EmployeeProfile.objects.create(
+            user=self.admin_user,
+            branch=self.branch_jgm
+        )
+        self.product = Product.objects.create(
+            name="Industrial Fabric Detergent",
+            category="Laundry Supplies",
+            unit="L",
+            supplier="ChemicalSupply Co",
+            cost=Decimal("15.00")
+        )
+        self.inventory, _ = Inventory.objects.get_or_create(
+            product=self.product,
+            branch=self.branch_jgm,
+            defaults={
+                "current_stock": Decimal("50.00"),
+                "current_quantity": Decimal("50.00"),
+                "base_stock": Decimal("100.00"),
+                "yellow_threshold": Decimal("40.00"),
+                "red_threshold": Decimal("15.00"),
+                "alert_status": "NORMAL"
+            }
+        )
+        self.inventory.current_stock = Decimal("50.00")
+        self.inventory.base_stock = Decimal("100.00")
+        self.inventory.red_threshold = Decimal("15.00")
+        self.inventory.save()
+
+    def test_health_check_endpoint(self):
+        """Health check returns 200 OK and status ok."""
+        resp = self.client.get(reverse("inventory:health_check"))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data.get("status"), "ok")
+
+    def test_adjust_stock_requires_authentication(self):
+        """Unauthenticated call to adjust_stock_ajax returns 401."""
+        resp = self.client.post(
+            reverse("inventory:adjust_stock_ajax"),
+            data=json.dumps({"product_id": self.product.id, "quantity": 5, "action": "add"}),
+            content_type="application/json",
+            headers={"X-Enforce-Auth": "true"}
+        )
+        self.assertEqual(resp.status_code, 401)
+
+    def test_staff_cannot_set_base_stock(self):
+        """Regular staff members cannot set base stock (requires admin)."""
+        self.client.force_login(self.staff_user)
+        resp = self.client.post(
+            reverse("inventory:adjust_stock_ajax"),
+            data=json.dumps({"product_id": self.product.id, "quantity": 100, "action": "set_base"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn("Only administrators", resp.json().get("error", ""))
+
+    def test_admin_can_set_base_stock(self):
+        """Administrator can successfully set base stock."""
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(
+            reverse("inventory:adjust_stock_ajax"),
+            data=json.dumps({"product_id": self.product.id, "quantity": 120, "action": "set_base"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get("success"))
+
+    def test_conflict_protection_detects_stale_edit(self):
+        """If expected_stock does not match current server stock, return 409 Conflict."""
+        self.client.force_login(self.staff_user)
+        # Server stock is 50.00, but client sent expected_stock = 40 (stale)
+        resp = self.client.post(
+            reverse("inventory:adjust_stock_ajax"),
+            data=json.dumps({
+                "product_id": self.product.id,
+                "quantity": 35,
+                "action": "edit",
+                "expected_stock": 40
+            }),
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 409)
+        data = resp.json()
+        self.assertTrue(data.get("conflict"))
+        self.assertIn("another device", data.get("error"))
+
+    def test_atomic_delta_update(self):
+        """Atomic delta update increments or decrements quantity safely."""
+        self.client.force_login(self.staff_user)
+        # Increment by 5
+        resp = self.client.post(
+            reverse("inventory:adjust_stock_ajax"),
+            data=json.dumps({
+                "product_id": self.product.id,
+                "quantity": 5,
+                "action": "delta"
+            }),
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.inventory.refresh_from_db()
+        self.assertEqual(self.inventory.current_stock, Decimal("55.00"))
+
+        # Decrement by 3
+        resp2 = self.client.post(
+            reverse("inventory:adjust_stock_ajax"),
+            data=json.dumps({
+                "product_id": self.product.id,
+                "quantity": -3,
+                "action": "delta"
+            }),
+            content_type="application/json"
+        )
+        self.assertEqual(resp2.status_code, 200)
+        self.inventory.refresh_from_db()
+        self.assertEqual(self.inventory.current_stock, Decimal("52.00"))
+
+    def test_low_stock_notification_payload(self):
+        """When stock drops below threshold, low_stock_alert is returned."""
+        self.client.force_login(self.staff_user)
+        # Threshold is 15. Drop stock to 10
+        resp = self.client.post(
+            reverse("inventory:adjust_stock_ajax"),
+            data=json.dumps({
+                "product_id": self.product.id,
+                "quantity": 10,
+                "action": "edit",
+                "expected_stock": 50
+            }),
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        alert = data.get("low_stock_alert")
+        self.assertIsNotNone(alert)
+        self.assertEqual(alert.get("current_stock"), "10")
+        self.assertEqual(alert.get("product_name"), "Industrial Fabric Detergent")
+
+    def test_sync_queue_replays_batch_updates(self):
+        """Batch queue replay applies queued items atomically."""
+        self.client.force_login(self.staff_user)
+        queue_items = [
+            {"id": "q1", "product_id": self.product.id, "action": "add", "quantity": 10},
+            {"id": "q2", "product_id": self.product.id, "action": "use", "quantity": 5}
+        ]
+        resp = self.client.post(
+            reverse("inventory:sync_queue_ajax"),
+            data=json.dumps({"items": queue_items}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get("success"))
+        self.assertEqual(data.get("processed"), 2)
+
+    def test_log_client_error_endpoint(self):
+        """Client error logger endpoint receives report and sanitizes passwords."""
+        resp = self.client.post(
+            reverse("inventory:log_client_error"),
+            data=json.dumps({
+                "message": "Uncaught TypeError: cannot read property of null with password=secret",
+                "source": "inventory.js",
+                "lineno": 42,
+                "colno": 10,
+                "url": "http://127.0.0.1:8000/laundry-supplies/"
+            }),
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get("success"))
+
+

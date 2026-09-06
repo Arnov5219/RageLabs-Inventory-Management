@@ -1,11 +1,16 @@
-// CSRF Cookie extraction helper
+// ==============================================================
+// LAUNDRYRAGE INVENTORY MANAGEMENT — PRODUCTION CLIENT CORE
+// Features: Offline sync, Conflict protection, Live sync status,
+//           Confirmation dialogs, Search/Filters, Monitoring
+// ==============================================================
+
+// ── CSRF Helper ───────────────────────────────────────────────
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
         const cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
             const cookie = cookies[i].trim();
-            // Does this cookie string begin with the name we want?
             if (cookie.substring(0, name.length + 1) === (name + '=')) {
                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                 break;
@@ -15,17 +20,29 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Toast notification helper
-function showToast(message, type = 'success') {
+// ── Toast Notification System (Debounced & Actionable) ────────
+const _recentToasts = new Map();
+
+function showToast(message, type = 'success', options = {}) {
     const container = document.querySelector('.toast-container');
     if (!container) return;
+
+    // Suppress duplicate toasts within 2.5 seconds
+    const now = Date.now();
+    if (_recentToasts.has(message) && (now - _recentToasts.get(message)) < 2500) {
+        return;
+    }
+    _recentToasts.set(message, now);
 
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
     const icon = document.createElement('span');
     icon.className = 'toast-icon';
-    icon.innerHTML = type === 'success' ? '✓' : '⚠';
+    if (type === 'success') icon.innerHTML = '✓';
+    else if (type === 'error') icon.innerHTML = '✕';
+    else if (type === 'warning') icon.innerHTML = '⚠';
+    else icon.innerHTML = 'ℹ';
     
     const msg = document.createElement('span');
     msg.className = 'toast-message';
@@ -33,101 +50,695 @@ function showToast(message, type = 'success') {
     
     toast.appendChild(icon);
     toast.appendChild(msg);
+
+    // Optional Retry Action Button
+    if (options.retryCallback && typeof options.retryCallback === 'function') {
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'toast-retry-btn';
+        retryBtn.innerText = 'Retry';
+        retryBtn.onclick = (e) => {
+            e.stopPropagation();
+            toast.remove();
+            options.retryCallback();
+        };
+        toast.appendChild(retryBtn);
+    }
+    
     container.appendChild(toast);
     
-    // Trigger animation
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
+    setTimeout(() => { toast.classList.add('show'); }, 10);
     
-    // Auto-remove
-    setTimeout(() => {
+    const autoDismiss = setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => {
-            toast.remove();
-        }, 300);
-    }, 4000);
+        setTimeout(() => { toast.remove(); }, 300);
+    }, options.duration || 4500);
+
+    toast.addEventListener('click', () => {
+        clearTimeout(autoDismiss);
+        toast.classList.remove('show');
+        setTimeout(() => { toast.remove(); }, 200);
+    });
 }
 
-// Adjust quantity inputs on browsing cards (pill selectors)
-document.addEventListener('DOMContentLoaded', () => {
-    // Helper function to update badge and quantity value on a product card
-    const updateCardStockDisplay = (card, newQuantity, remainingPercentage, status, baseStock, unit) => {
-        const badge = card.querySelector('.stock-badge');
-        const pctEl = card.querySelector('.percentage-remaining');
-        const pillVal = card.querySelector('.pill-value');
-        const pillInput = card.querySelector('.pill-value-input');
-        const roundedQty = parseFloat(newQuantity).toFixed(0);
-        const roundedBase = parseFloat(baseStock || 0).toFixed(0);
-        
-        if (badge) {
-            if (remainingPercentage !== null && remainingPercentage !== undefined && remainingPercentage !== '') {
-                badge.innerText = `${roundedQty} / ${roundedBase} ${unit} remaining`;
-            } else {
-                badge.innerText = `${roundedQty} ${unit} remaining (No Base Stock)`;
+// ── Confirmation Dialog Manager (Feature 7) ───────────────────
+const ConfirmDialog = {
+    modal: null,
+    titleEl: null,
+    msgEl: null,
+    currEl: null,
+    newEl: null,
+    proceedBtn: null,
+    cancelBtn: null,
+    closeBtn: null,
+    resolver: null,
+
+    init() {
+        this.modal = document.getElementById('confirm-dialog-modal');
+        if (!this.modal) return;
+        this.titleEl = document.getElementById('confirm-dialog-title');
+        this.msgEl = document.getElementById('confirm-dialog-msg');
+        this.currEl = document.getElementById('confirm-dialog-curr');
+        this.newEl = document.getElementById('confirm-dialog-new');
+        this.proceedBtn = document.getElementById('confirm-dialog-proceed');
+        this.cancelBtn = document.getElementById('confirm-dialog-cancel');
+        this.closeBtn = document.getElementById('confirm-dialog-close');
+
+        const closeHandler = () => this.close(false);
+        if (this.cancelBtn) this.cancelBtn.addEventListener('click', closeHandler);
+        if (this.closeBtn) this.closeBtn.addEventListener('click', closeHandler);
+        this.modal.addEventListener('click', (e) => {
+            if (e.target === this.modal) closeHandler();
+        });
+
+        if (this.proceedBtn) {
+            this.proceedBtn.addEventListener('click', () => {
+                this.close(true);
+            });
+        }
+    },
+
+    ask({ title, message, currentStock, newStock, confirmText = 'Confirm', isDanger = true }) {
+        return new Promise((resolve) => {
+            if (!this.modal) {
+                // Fallback to native confirm if modal element not found
+                return resolve(window.confirm(`${title}\n\n${message}`));
             }
-            
-            badge.className = 'stock-badge';
-            if (status === 'RED') {
-                badge.classList.add('low');
-            } else if (status === 'YELLOW') {
-                badge.classList.add('mod');
-            } else if (status === 'GREEN') {
-                badge.classList.add('suff');
+            this.resolver = resolve;
+            if (this.titleEl) this.titleEl.innerText = title;
+            if (this.msgEl) this.msgEl.innerText = message;
+            if (this.currEl) this.currEl.innerText = currentStock;
+            if (this.newEl) this.newEl.innerText = newStock;
+            if (this.proceedBtn) {
+                this.proceedBtn.innerText = confirmText;
+                this.proceedBtn.style.background = isDanger ? '#DC2626' : '#0F172A';
+                this.proceedBtn.style.borderColor = isDanger ? '#DC2626' : '#0F172A';
+            }
+            this.modal.style.display = 'flex';
+            this.modal.classList.add('active');
+        });
+    },
+
+    close(confirmed) {
+        if (this.modal) {
+            this.modal.classList.remove('active');
+            this.modal.style.display = 'none';
+        }
+        if (this.resolver) {
+            this.resolver(confirmed);
+            this.resolver = null;
+        }
+    }
+};
+
+// ── Network & Offline Queue Manager (Features 1 & 5) ──────────
+const NetworkManager = {
+    isOnline: navigator.onLine,
+    queueKey: 'lr_offline_stock_queue',
+    syncIndicator: null,
+    offlineBanner: null,
+    isSyncing: false,
+
+    init() {
+        this.syncIndicator = document.getElementById('sync-status-indicator');
+        this.offlineBanner = document.getElementById('global-offline-banner');
+
+        window.addEventListener('online', () => this.handleNetworkChange(true));
+        window.addEventListener('offline', () => this.handleNetworkChange(false));
+
+        if (this.syncIndicator) {
+            this.syncIndicator.addEventListener('click', () => {
+                if (this.getQueue().length > 0 && this.isOnline && !this.isSyncing) {
+                    this.drainQueue();
+                }
+            });
+        }
+
+        this.updateUI();
+
+        // Periodic health check heartbeat every 35s
+        setInterval(() => this.checkConnectivity(), 35000);
+
+        // If online at start and items in queue, attempt drain
+        if (this.isOnline && this.getQueue().length > 0) {
+            this.drainQueue();
+        }
+    },
+
+    async checkConnectivity() {
+        try {
+            const res = await fetch('/api/health/', { method: 'GET', cache: 'no-store' });
+            if (res.ok) {
+                if (!this.isOnline) this.handleNetworkChange(true);
             } else {
-                badge.classList.add('no-base');
+                if (this.isOnline) this.handleNetworkChange(false);
+            }
+        } catch (e) {
+            if (this.isOnline) this.handleNetworkChange(false);
+        }
+    },
+
+    handleNetworkChange(onlineState) {
+        const wasOffline = !this.isOnline && onlineState;
+        this.isOnline = onlineState;
+        this.updateUI();
+
+        if (wasOffline) {
+            showToast('✓ Connection restored. Syncing pending changes...', 'success');
+            this.drainQueue();
+        } else if (!onlineState) {
+            showToast("⚠ You're Offline. Changes will sync when reconnected.", 'warning');
+        }
+    },
+
+    updateUI() {
+        const queue = this.getQueue();
+        if (this.offlineBanner) {
+            this.offlineBanner.style.display = this.isOnline ? 'none' : 'block';
+        }
+
+        if (!this.syncIndicator) return;
+        this.syncIndicator.className = 'sync-status-indicator';
+
+        if (!this.isOnline) {
+            this.syncIndicator.classList.add('sync-offline');
+            this.syncIndicator.querySelector('.sync-text').innerText = 'Offline';
+            this.syncIndicator.title = 'Offline — actions are queued locally';
+        } else if (this.isSyncing) {
+            this.syncIndicator.classList.add('sync-syncing');
+            this.syncIndicator.querySelector('.sync-text').innerText = 'Syncing...';
+            this.syncIndicator.title = 'Syncing pending inventory adjustments';
+        } else if (queue.length > 0) {
+            this.syncIndicator.classList.add('sync-pending');
+            this.syncIndicator.querySelector('.sync-text').innerText = `${queue.length} Pending`;
+            this.syncIndicator.title = `${queue.length} change(s) waiting to sync. Click to retry.`;
+        } else {
+            this.syncIndicator.classList.add('sync-live');
+            this.syncIndicator.querySelector('.sync-text').innerText = 'Live Synced';
+            this.syncIndicator.title = 'All inventory data is up to date';
+        }
+    },
+
+    getQueue() {
+        try {
+            return JSON.parse(localStorage.getItem(this.queueKey) || '[]');
+        } catch {
+            return [];
+        }
+    },
+
+    saveQueue(queue) {
+        localStorage.setItem(this.queueKey, JSON.stringify(queue));
+        this.updateUI();
+    },
+
+    enqueue(item) {
+        const queue = this.getQueue();
+        queue.push({
+            id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            timestamp: Date.now(),
+            ...item
+        });
+        this.saveQueue(queue);
+
+        // Visually mark affected card
+        const card = document.querySelector(`.product-card[data-product-id="${item.product_id}"]`);
+        if (card) {
+            card.classList.add('is-queued');
+            let badge = card.querySelector('.queued-badge-label');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'queued-badge-label';
+                badge.innerText = '⏳ Queued';
+                const headerBlock = card.querySelector('.product-header-block');
+                if (headerBlock) headerBlock.appendChild(badge);
             }
         }
-        
-        if (pctEl) {
-            if (remainingPercentage !== null && remainingPercentage !== undefined && remainingPercentage !== '') {
-                const roundedPct = parseFloat(remainingPercentage).toFixed(0);
-                pctEl.innerText = `${roundedPct}% remaining`;
+
+        showToast("⚠ You're offline. Update queued to sync automatically.", 'warning');
+    },
+
+    async drainQueue() {
+        const queue = this.getQueue();
+        if (queue.length === 0 || this.isSyncing || !this.isOnline) return;
+
+        this.isSyncing = true;
+        this.updateUI();
+
+        try {
+            const response = await fetch('/stock/sync-queue/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ items: queue })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                // Remove queued indicators
+                document.querySelectorAll('.product-card.is-queued').forEach(card => {
+                    card.classList.remove('is-queued');
+                    const badge = card.querySelector('.queued-badge-label');
+                    if (badge) badge.remove();
+                });
+
+                // Clear queue
+                this.saveQueue([]);
+                showToast('✓ All changes synced successfully.', 'success');
             } else {
-                pctEl.innerText = 'Base stock not set';
+                this.syncIndicator.classList.remove('sync-syncing');
+                this.syncIndicator.classList.add('sync-failed');
+                this.syncIndicator.querySelector('.sync-text').innerText = 'Sync Failed';
+                showToast('Unable to complete queue sync. Will retry automatically.', 'warning');
+            }
+        } catch (err) {
+            console.error('Queue sync error:', err);
+            this.syncIndicator.classList.remove('sync-syncing');
+            this.syncIndicator.classList.add('sync-failed');
+            this.syncIndicator.querySelector('.sync-text').innerText = 'Sync Failed';
+        } finally {
+            this.isSyncing = false;
+            this.updateUI();
+        }
+    }
+};
+
+// ── Low Stock Alert Tracker (Feature 14 — prevents spam + Android Native Notification) ──────
+const LowStockTracker = {
+    history: new Set(),
+
+    notify(alert) {
+        if (!alert || !alert.product_name) return;
+        const key = `${alert.product_id}_${alert.current_stock}`;
+        if (this.history.has(key)) return;
+        this.history.add(key);
+
+        const title = `🚨 Low Stock: ${alert.product_name}`;
+        const msg = `${alert.product_name} is low on stock (${alert.current_stock} / ${alert.threshold} ${alert.unit} remaining).`;
+
+        showToast(
+            `🚨 Low Stock Alert: ${alert.product_name} is below minimum (${alert.current_stock} / ${alert.threshold} ${alert.unit})`,
+            'error',
+            { duration: 6000 }
+        );
+
+        // Native Android Notification via Capacitor
+        if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('LocalNotifications')) {
+            try {
+                window.Capacitor.Plugins.LocalNotifications.schedule({
+                    notifications: [
+                        {
+                            title: title,
+                            body: msg,
+                            id: Math.floor(Math.random() * 1000000),
+                            schedule: { at: new Date(Date.now() + 200) },
+                            sound: null,
+                            actionTypeId: '',
+                            extra: null
+                        }
+                    ]
+                });
+            } catch (err) {
+                console.debug('Capacitor native notification note:', err);
             }
         }
-        
-        if (pillVal) {
-            pillVal.innerText = roundedQty;
+    }
+};
+
+// ── Card Stock Display Updater ────────────────────────────────
+function updateCardStockDisplay(card, newQuantity, remainingPercentage, status, baseStock, unit) {
+    const badge = card.querySelector('.stock-badge');
+    const pctEl = card.querySelector('.percentage-remaining');
+    const pillVal = card.querySelector('.pill-value');
+    const pillInput = card.querySelector('.pill-value-input');
+    const bullet = card.querySelector('.stock-bullet');
+    const roundedQty = parseFloat(newQuantity).toFixed(0);
+    const roundedBase = parseFloat(baseStock || 0).toFixed(0);
+
+    card.dataset.currentStock = roundedQty;
+    card.dataset.productStatus = status;
+
+    if (badge) {
+        badge.className = 'stock-badge';
+        if (status === 'RED') {
+            badge.classList.add('low');
+            badge.innerText = 'LOW';
+        } else if (status === 'YELLOW') {
+            badge.classList.add('mod');
+            badge.innerText = 'MODERATE';
+        } else if (status === 'GREEN') {
+            badge.classList.add('suff');
+            badge.innerText = 'SUFFICIENT';
+        } else {
+            badge.classList.add('no-base');
+            badge.innerText = 'NO BASE';
         }
-        if (pillInput) {
-            pillInput.value = roundedQty;
+    }
+
+    if (bullet) {
+        if (status === 'RED') bullet.innerText = '🔴';
+        else if (status === 'YELLOW') bullet.innerText = '🟡';
+        else if (status === 'GREEN') bullet.innerText = '🟢';
+        else bullet.innerText = '⚪';
+    }
+
+    const qtySpan = card.querySelector('.product-info-area span:not(.stock-bullet)');
+    if (qtySpan) {
+        if (remainingPercentage !== null && remainingPercentage !== undefined && remainingPercentage !== '') {
+            qtySpan.innerText = `${roundedQty} / ${roundedBase} ${unit} remaining`;
+        } else {
+            qtySpan.innerText = `${roundedQty} ${unit} remaining`;
+        }
+    }
+
+    if (pctEl) {
+        if (remainingPercentage !== null && remainingPercentage !== undefined && remainingPercentage !== '') {
+            pctEl.innerText = `${parseFloat(remainingPercentage).toFixed(0)}% remaining`;
+        } else {
+            pctEl.innerText = 'Base stock not set';
+        }
+    }
+
+    if (pillVal) pillVal.innerText = roundedQty;
+    if (pillInput) pillInput.value = roundedQty;
+}
+
+// ── Search & Advanced Filtering (Feature 16) ──────────────────
+const ProductFilterManager = {
+    searchInput: null,
+    clearBtn: null,
+    chipBtns: [],
+    sortSelect: null,
+    emptyState: null,
+    countBadge: null,
+    cards: [],
+    currentFilter: 'all',
+    currentSort: 'default',
+    searchQuery: '',
+
+    init() {
+        this.searchInput = document.getElementById('inventory-search-input');
+        this.clearBtn = document.getElementById('search-clear-btn');
+        this.chipBtns = Array.from(document.querySelectorAll('.filter-chip'));
+        this.sortSelect = document.getElementById('inventory-sort-select');
+        this.emptyState = document.getElementById('filter-empty-state');
+        this.countBadge = document.getElementById('product-count-badge');
+        this.cards = Array.from(document.querySelectorAll('.product-card'));
+        const resetBtn = document.getElementById('reset-filters-btn');
+
+        if (this.cards.length === 0) return;
+
+        // Search Input Listener with input debouncing
+        if (this.searchInput) {
+            this.searchInput.addEventListener('input', (e) => {
+                this.searchQuery = e.target.value.trim().toLowerCase();
+                if (this.clearBtn) {
+                    this.clearBtn.style.display = this.searchQuery ? 'flex' : 'none';
+                }
+                this.applyFilters();
+            });
+        }
+
+        if (this.clearBtn) {
+            this.clearBtn.addEventListener('click', () => {
+                if (this.searchInput) {
+                    this.searchInput.value = '';
+                    this.searchQuery = '';
+                    this.clearBtn.style.display = 'none';
+                    this.applyFilters();
+                }
+            });
+        }
+
+        // Filter Chips
+        this.chipBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.chipBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.currentFilter = btn.dataset.filter || 'all';
+                this.applyFilters();
+            });
+        });
+
+        // Sort Dropdown
+        if (this.sortSelect) {
+            this.sortSelect.addEventListener('change', (e) => {
+                this.currentSort = e.target.value;
+                this.applySort();
+            });
+        }
+
+        // Reset Filters Button
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (this.searchInput) this.searchInput.value = '';
+                this.searchQuery = '';
+                if (this.clearBtn) this.clearBtn.style.display = 'none';
+                this.chipBtns.forEach(b => b.classList.remove('active'));
+                const allChip = this.chipBtns.find(b => b.dataset.filter === 'all');
+                if (allChip) allChip.classList.add('active');
+                this.currentFilter = 'all';
+                if (this.sortSelect) this.sortSelect.value = 'default';
+                this.currentSort = 'default';
+                this.applyFilters();
+            });
+        }
+    },
+
+    applyFilters() {
+        let visibleCount = 0;
+
+        this.cards.forEach(card => {
+            const name = (card.dataset.productName || '').toLowerCase();
+            const status = card.dataset.productStatus || '';
+
+            const matchesSearch = !this.searchQuery || name.includes(this.searchQuery);
+            let matchesStatus = true;
+            if (this.currentFilter !== 'all') {
+                matchesStatus = (status === this.currentFilter);
+            }
+
+            if (matchesSearch && matchesStatus) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (this.countBadge) {
+            this.countBadge.innerText = `${visibleCount} Item${visibleCount === 1 ? '' : 's'}`;
+        }
+
+        if (this.emptyState) {
+            this.emptyState.style.display = (visibleCount === 0) ? 'block' : 'none';
+        }
+
+        this.applySort();
+    },
+
+    applySort() {
+        const grid = document.querySelector('.product-grid');
+        if (!grid) return;
+
+        const visibleCards = this.cards.filter(c => c.style.display !== 'none');
+
+        visibleCards.sort((a, b) => {
+            if (this.currentSort === 'stock-asc') {
+                return parseFloat(a.dataset.currentStock || 0) - parseFloat(b.dataset.currentStock || 0);
+            } else if (this.currentSort === 'stock-desc') {
+                return parseFloat(b.dataset.currentStock || 0) - parseFloat(a.dataset.currentStock || 0);
+            } else if (this.currentSort === 'name-asc') {
+                return (a.dataset.productName || '').localeCompare(b.dataset.productName || '');
+            }
+            return 0; // Default DOM order
+        });
+
+        visibleCards.forEach(card => grid.appendChild(card));
+    }
+};
+
+// ── App Startup Initialization & Splash (Feature 8) ───────────
+function initAppStartup() {
+    const splash = document.getElementById('app-startup-splash');
+    if (splash) {
+        splash.style.display = 'none';
+        splash.remove();
+    }
+
+    // Cache products locally for offline viewing
+    try {
+        const productData = [];
+        document.querySelectorAll('.product-card').forEach(c => {
+            productData.push({
+                id: c.dataset.productId,
+                name: c.dataset.productName,
+                unit: c.dataset.productUnit,
+                stock: c.dataset.currentStock,
+                status: c.dataset.productStatus
+            });
+        });
+        if (productData.length > 0) {
+            localStorage.setItem('lr_cached_inventory', JSON.stringify(productData));
+        }
+    } catch (e) {
+        // Safe failover
+    }
+}
+
+// ── Global Error & Crash Reporting (Feature 19) ───────────────
+function initCrashReporting() {
+    const reportCrash = (msg, src, line, col, stack) => {
+        try {
+            fetch('/api/log-client-error/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    message: String(msg || 'Unknown'),
+                    source: String(src || 'unknown'),
+                    lineno: line || 0,
+                    colno: col || 0,
+                    url: window.location.href,
+                    userAgent: navigator.userAgent
+                })
+            }).catch(() => {});
+        } catch {
+            // Ignore logging transport failures
         }
     };
 
-    // Pill Selectors (+ / - buttons)
-    document.querySelectorAll('.pill-selector').forEach(selector => {
-        const minusBtn = selector.querySelector('.minus');
-        const plusBtn = selector.querySelector('.plus');
-        const valueSpan = selector.querySelector('.pill-value');
-        const input = selector.querySelector('.pill-value-input');
-        const card = selector.closest('.product-card');
-        const unit = card.dataset.productUnit;
-
-        if (!minusBtn || !plusBtn || !input) return;
-
-        const step = parseFloat(input.step) || 1;
-        const min = parseFloat(input.min) || 0;
-
-        const setQuantity = (quantity) => {
-            input.value = Math.max(min, quantity).toString();
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        };
-
-        minusBtn.addEventListener('click', () => {
-            const current = parseFloat(input.value);
-            setQuantity((Number.isFinite(current) ? current : min) - step);
-        });
-
-        plusBtn.addEventListener('click', () => {
-            const current = parseFloat(input.value);
-            setQuantity((Number.isFinite(current) ? current : min) + step);
-        });
+    window.addEventListener('error', (e) => {
+        reportCrash(e.message, e.filename, e.lineno, e.colno, e.error?.stack);
     });
 
-    // Set Monthly Base Stock Modal overlay functionality (AJAX)
+    window.addEventListener('unhandledrejection', (e) => {
+        reportCrash(e.reason?.message || e.reason, 'promise', 0, 0, e.reason?.stack);
+    });
+}
+
+// ── Firebase Live Sync (Spark Free Plan) ──────────────────────
+const FirebaseLiveSync = {
+    app: null,
+    initialized: false,
+
+    init() {
+        if (!window.firebase || this.initialized) return;
+
+        const projectId = document.body.dataset.firebaseProject || 'laundryrage-inventory';
+        const branchCode = document.body.dataset.branchCode || 'OD3301LR-JGM';
+
+        const firebaseConfig = {
+            projectId: projectId,
+            databaseURL: `https://${projectId}-default-rtdb.asia-south1.firebasedatabase.app`
+        };
+
+        try {
+            if (!firebase.apps || firebase.apps.length === 0) {
+                this.app = firebase.initializeApp(firebaseConfig);
+            } else {
+                this.app = firebase.apps[0];
+            }
+            this.initialized = true;
+
+            // Connect Realtime Database listener if available
+            this.initRTDBListener(branchCode);
+
+            // Connect Firestore listener if available
+            this.initFirestoreListener(branchCode);
+        } catch (err) {
+            console.debug('Firebase client init notice:', err);
+        }
+    },
+
+    initRTDBListener(branchCode) {
+        try {
+            if (!firebase.database) return;
+            const rtdb = firebase.database();
+            const branchRef = rtdb.ref(`branches/${branchCode}/products`);
+
+            branchRef.on('child_changed', (snapshot) => {
+                const productId = snapshot.key;
+                const data = snapshot.val();
+                if (data) this.applyRemoteStockUpdate(productId, data);
+            });
+        } catch (e) {
+            console.debug('Firebase RTDB listener notice:', e);
+        }
+    },
+
+    initFirestoreListener(branchCode) {
+        try {
+            if (!firebase.firestore) return;
+            const fs = firebase.firestore();
+            fs.collection('branches').doc(String(branchCode)).collection('products')
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'modified' || change.type === 'added') {
+                            const productId = change.doc.id;
+                            const data = change.doc.data();
+                            if (data) this.applyRemoteStockUpdate(productId, data);
+                        }
+                    });
+                }, (err) => {
+                    console.debug('Firestore listener notice:', err);
+                });
+        } catch (e) {
+            console.debug('Firestore listener notice:', e);
+        }
+    },
+
+    applyRemoteStockUpdate(productId, data) {
+        const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+        if (!card) return;
+
+        const currentDisplay = parseFloat(card.dataset.currentStock);
+        const incomingStock = parseFloat(data.stock);
+
+        if (!isNaN(currentDisplay) && Math.abs(currentDisplay - incomingStock) < 0.001) {
+            return;
+        }
+
+        const cleanStock = (incomingStock % 1 === 0) ? String(parseInt(incomingStock, 10)) : String(incomingStock);
+
+        card.dataset.currentStock = cleanStock;
+        if (data.status) card.dataset.productStatus = data.status;
+
+        const stockValueEl = card.querySelector('.stock-value');
+        if (stockValueEl) {
+            stockValueEl.innerText = cleanStock;
+            stockValueEl.classList.add('stock-updated-pulse');
+            setTimeout(() => stockValueEl.classList.remove('stock-updated-pulse'), 1200);
+        }
+
+        const statusBadge = card.querySelector('.product-status-badge');
+        if (statusBadge && data.status) {
+            statusBadge.innerText = data.status;
+            statusBadge.className = 'product-status-badge';
+            if (data.status === 'In Stock') {
+                statusBadge.classList.add('status-in-stock');
+            } else if (data.status === 'Low Stock') {
+                statusBadge.classList.add('status-low-stock');
+            } else if (data.status === 'Out of Stock') {
+                statusBadge.classList.add('status-out-of-stock');
+            }
+        }
+    }
+};
+
+// ── Main App Initialization ────────────────────────────────────
+function initApp() {
+    initAppStartup();
+    initCrashReporting();
+    ConfirmDialog.init();
+    NetworkManager.init();
+    ProductFilterManager.init();
+    FirebaseLiveSync.init();
+
+    // 1. Set Monthly Base Stock Modal Overlay (AJAX)
     const modalOverlay = document.getElementById('restock-modal');
     const modalForm = document.getElementById('restock-form');
     
@@ -156,12 +767,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        const closeModal = () => {
-            modalOverlay.classList.remove('active');
-        };
-
-        modalClose.addEventListener('click', closeModal);
-        modalCancel.addEventListener('click', closeModal);
+        const closeModal = () => modalOverlay.classList.remove('active');
+        if (modalClose) modalClose.addEventListener('click', closeModal);
+        if (modalCancel) modalCancel.addEventListener('click', closeModal);
         modalOverlay.addEventListener('click', (e) => {
             if (e.target === modalOverlay) closeModal();
         });
@@ -176,7 +784,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            if (!NetworkManager.isOnline) {
+                showToast('Setting base stock requires an active internet connection.', 'warning');
+                return;
+            }
+
             submitBtn.disabled = true;
+            submitBtn.classList.add('btn-loading');
             submitBtn.innerText = 'Saving...';
 
             try {
@@ -194,37 +808,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const data = await response.json();
-                if (data.success) {
+                if (response.ok && data.success) {
                     const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
                     if (card) {
                         const unit = card.dataset.productUnit;
                         updateCardStockDisplay(card, data.new_quantity, data.remaining_percentage, data.status, data.base_stock, unit);
                     }
-                    showToast('Monthly base stock updated successfully.', 'success');
+                    showToast('✓ Monthly base stock updated successfully.', 'success');
                     closeModal();
+                } else if (response.status === 403) {
+                    showToast(data.error || 'Permission denied. Only administrators can set base stock.', 'error');
                 } else {
                     showToast(data.error || 'Failed to update base stock.', 'warning');
                 }
             } catch (error) {
                 console.error('AJAX Error:', error);
-                showToast('An error occurred. Please try again.', 'warning');
+                showToast('Unable to update base stock. Please check your connection and try again.', 'error');
             } finally {
                 submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-loading');
                 submitBtn.innerText = 'Set Base Stock';
             }
         });
     }
 
-    // Direct On-Card Editing logic (Edit / Done state toggle)
+    // 2. Direct On-Card Editing logic (Edit / Done state toggle with conflict check & confirmation)
     document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             const card = btn.closest('.product-card');
             const productId = card.dataset.productId;
+            const productName = card.querySelector('.product-name').innerText;
             const unit = card.dataset.productUnit;
             const isEditing = btn.classList.contains('active-edit');
             
             const valEl = card.querySelector('.pill-value');
             const inputEl = card.querySelector('.pill-value-input');
+            const currentStock = parseFloat(card.dataset.currentStock || valEl.innerText || 0);
             
             if (!isEditing) {
                 // Enter Edit Mode
@@ -238,17 +857,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Done clicked - save value
                 const newValue = parseFloat(inputEl.value);
                 if (isNaN(newValue) || newValue < 0) {
-                    showToast('Please specify a valid quantity.', 'warning');
+                    showToast('Please specify a valid non-negative quantity.', 'warning');
                     return;
                 }
                 
-                // Confirm integer validation
                 if (newValue % 1 !== 0) {
                     showToast('Quantity must be a whole number.', 'warning');
                     return;
                 }
+
+                // If stock didn't change, just exit edit mode
+                if (newValue === currentStock) {
+                    btn.classList.remove('active-edit');
+                    btn.innerText = 'Edit';
+                    inputEl.style.display = 'none';
+                    valEl.style.display = 'inline-block';
+                    return;
+                }
+
+                // Confirmation check for large stock drop (Feature 7)
+                const dropAmount = currentStock - newValue;
+                if (dropAmount >= 10 || (currentStock > 0 && dropAmount > (currentStock * 0.5))) {
+                    const confirmed = await ConfirmDialog.ask({
+                        title: 'Reduce Stock?',
+                        message: `You are about to remove ${dropAmount} ${unit} of "${productName}".`,
+                        currentStock: `${currentStock} ${unit}`,
+                        newStock: `${newValue} ${unit}`,
+                        confirmText: 'Confirm Reduction',
+                        isDanger: true
+                    });
+                    if (!confirmed) return;
+                }
+
+                // If offline, queue update safely (Feature 1)
+                if (!NetworkManager.isOnline) {
+                    NetworkManager.enqueue({
+                        product_id: productId,
+                        action: 'edit',
+                        quantity: newValue,
+                        expected_stock: currentStock,
+                        notes: 'Offline card edit'
+                    });
+                    // Optimistic update
+                    updateCardStockDisplay(card, newValue, null, card.dataset.productStatus, null, unit);
+                    btn.classList.remove('active-edit');
+                    btn.innerText = 'Edit';
+                    inputEl.style.display = 'none';
+                    valEl.style.display = 'inline-block';
+                    return;
+                }
                 
                 btn.disabled = true;
+                btn.classList.add('btn-loading');
                 btn.innerText = 'Saving...';
                 
                 try {
@@ -262,42 +922,162 @@ document.addEventListener('DOMContentLoaded', () => {
                             product_id: productId,
                             quantity: newValue,
                             action: 'edit',
+                            expected_stock: currentStock,
                             notes: 'Manual stock edit via card'
                         })
                     });
                     
                     const data = await response.json();
-                    if (data.success) {
+
+                    if (response.status === 409) {
+                        // Multi-device conflict detected (Feature 11)
+                        if (data.current_stock) {
+                            updateCardStockDisplay(card, data.current_stock, null, card.dataset.productStatus, data.base_stock, unit);
+                        }
+                        showToast(data.error || 'This product was updated on another device. Latest stock reloaded.', 'warning');
+                        btn.innerText = 'Done';
+                        return;
+                    }
+
+                    if (response.ok && data.success) {
                         updateCardStockDisplay(card, data.new_quantity, data.remaining_percentage, data.status, data.base_stock, unit);
-                        showToast('Stock quantity updated successfully.', 'success');
+                        showToast('✓ Stock updated successfully', 'success');
                         
+                        if (data.low_stock_alert) {
+                            LowStockTracker.notify(data.low_stock_alert);
+                        }
+
                         // Exit Edit Mode
                         btn.classList.remove('active-edit');
                         btn.innerText = 'Edit';
                         inputEl.style.display = 'none';
                         valEl.style.display = 'inline-block';
+                    } else if (response.status === 403) {
+                        showToast(data.error || 'Permission denied. You can only manage your assigned branch.', 'error');
+                        btn.innerText = 'Done';
                     } else {
-                        showToast(data.error || 'Failed to edit stock.', 'warning');
+                        showToast(data.error || 'Unable to update stock.', 'warning');
                         btn.innerText = 'Done';
                     }
                 } catch (error) {
                     console.error('AJAX Error:', error);
-                    showToast('An error occurred. Please try again.', 'warning');
+                    showToast('Unable to update stock. Please check your connection.', 'error', {
+                        retryCallback: () => btn.click()
+                    });
                     btn.innerText = 'Done';
                 } finally {
                     btn.disabled = false;
+                    btn.classList.remove('btn-loading');
                 }
             }
         });
     });
 
-    // Export History to Google Sheets AJAX handler with loading state & disabled state
+    // 3. Pill Stepper (+ / - Buttons) with Atomic Delta Updates & Confirmation
+    document.querySelectorAll('.pill-selector').forEach(selector => {
+        const minusBtn = selector.querySelector('.minus');
+        const plusBtn = selector.querySelector('.plus');
+        const card = selector.closest('.product-card');
+        if (!card || !minusBtn || !plusBtn) return;
+
+        const productId = card.dataset.productId;
+        const productName = card.querySelector('.product-name').innerText;
+        const unit = card.dataset.productUnit;
+
+        const handleStep = async (delta) => {
+            const currentStock = parseFloat(card.dataset.currentStock || card.querySelector('.pill-value')?.innerText || 0);
+            const targetStock = Math.max(0, currentStock + delta);
+
+            // Confirmation for large stock drop
+            if (delta < 0 && (Math.abs(delta) >= 10 || (currentStock > 0 && Math.abs(delta) > (currentStock * 0.5)))) {
+                const confirmed = await ConfirmDialog.ask({
+                    title: 'Reduce Stock?',
+                    message: `You are about to remove ${Math.abs(delta)} ${unit} of "${productName}".`,
+                    currentStock: `${currentStock} ${unit}`,
+                    newStock: `${targetStock} ${unit}`,
+                    confirmText: 'Confirm Reduction',
+                    isDanger: true
+                });
+                if (!confirmed) return;
+            }
+
+            // Optimistic update
+            updateCardStockDisplay(card, targetStock, null, card.dataset.productStatus, null, unit);
+
+            // If offline, queue delta safely
+            if (!NetworkManager.isOnline) {
+                NetworkManager.enqueue({
+                    product_id: productId,
+                    action: 'delta',
+                    quantity: delta,
+                    expected_stock: currentStock,
+                    notes: `Offline delta adjustment (${delta > 0 ? '+' : ''}${delta})`
+                });
+                return;
+            }
+
+            try {
+                const response = await fetch('/stock/adjust-ajax/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        quantity: delta,
+                        action: 'delta',
+                        expected_stock: currentStock,
+                        notes: `Card stepper (${delta > 0 ? '+' : ''}${delta})`
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    updateCardStockDisplay(card, data.new_quantity, data.remaining_percentage, data.status, data.base_stock, unit);
+                    if (data.low_stock_alert) {
+                        LowStockTracker.notify(data.low_stock_alert);
+                    }
+                } else if (response.status === 409) {
+                    if (data.current_stock) {
+                        updateCardStockDisplay(card, data.current_stock, null, card.dataset.productStatus, data.base_stock, unit);
+                    }
+                    showToast(data.error || 'Inventory updated on another device. Reloaded latest.', 'warning');
+                } else {
+                    // Revert to original stock on error
+                    updateCardStockDisplay(card, currentStock, null, card.dataset.productStatus, null, unit);
+                    showToast(data.error || 'Unable to update stock.', 'error');
+                }
+            } catch (err) {
+                console.error('Stepper error:', err);
+                // Revert on error
+                updateCardStockDisplay(card, currentStock, null, card.dataset.productStatus, null, unit);
+                showToast('Unable to update stock. Check connection.', 'error');
+            }
+        };
+
+        minusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleStep(-1);
+        });
+
+        plusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleStep(1);
+        });
+    });
+
+    // 4. Export History to Google Sheets AJAX handler with offline check & loading state
     const exportHistoryBtn = document.getElementById('btn-export-history');
     if (exportHistoryBtn) {
         exportHistoryBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            
             if (exportHistoryBtn.disabled) return;
+
+            if (!NetworkManager.isOnline) {
+                showToast('Google Sheets export requires an active internet connection.', 'warning');
+                return;
+            }
             
             const form = exportHistoryBtn.closest('form');
             if (!form) return;
@@ -316,10 +1096,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const originalHtml = exportHistoryBtn.innerHTML;
             exportHistoryBtn.disabled = true;
-            exportHistoryBtn.innerHTML = `
-                <span class="export-spinner"></span>
-                <span>Exporting to Google Sheets...</span>
-            `;
+            exportHistoryBtn.classList.add('btn-loading');
+            exportHistoryBtn.innerHTML = `<span>Exporting to Google Sheets...</span>`;
             
             try {
                 const targetUrl = (form.getAttribute('action') || window.location.pathname) + '?' + params.toString();
@@ -333,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await response.json();
                 if (response.ok && data.success) {
-                    showToast('History successfully exported to Google Sheets', 'success');
+                    showToast('✓ History successfully exported to Google Sheets', 'success');
                     if (data.spreadsheet_url) {
                         window.open(data.spreadsheet_url, '_blank');
                     }
@@ -342,11 +1120,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (err) {
                 console.error('Export Error:', err);
-                showToast('Unable to connect to Google Sheets. Please check network connection.', 'warning');
+                showToast('Unable to connect to Google Sheets. Please check network connection.', 'error');
             } finally {
                 exportHistoryBtn.disabled = false;
+                exportHistoryBtn.classList.remove('btn-loading');
                 exportHistoryBtn.innerHTML = originalHtml;
             }
         });
     }
-});
+}
+
+// Resilient execution: invoke immediately if document already loaded/interactive
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}

@@ -23,5 +23,11 @@ urlpatterns = [
     
     # Real-time AJAX adjustments
     path('stock/adjust-ajax/', views.adjust_stock_ajax, name='adjust_stock_ajax'),
+    path('stock/sync-queue/', views.sync_queue_ajax, name='sync_queue_ajax'),
     path('refill/request-ajax/', views.request_refill_ajax, name='request_refill_ajax'),
+
+    # Production Readiness & Monitoring
+    path('api/health/', views.health_check_view, name='health_check'),
+    path('api/log-client-error/', views.log_client_error_view, name='log_client_error'),
 ]
+

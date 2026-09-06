@@ -1,4 +1,4 @@
-<div class="product-card" data-product-id="{{ product.id }}" data-product-unit="{{ product.unit }}">
+<div class="product-card" data-product-id="{{ product.id }}" data-product-unit="{{ product.unit }}" data-product-name="{{ product.name|lower }}" data-current-stock="{{ product.inventory.current_stock|floatformat:'0' }}" data-product-status="{{ product.stock_status }}">
     {% if product.image %}
         <img class="product-image" src="{{ product.image.url }}" alt="{{ product.name }}">
     {% else %}

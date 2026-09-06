@@ -15,10 +15,25 @@
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
 
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260906_ui_refine2">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260906_sync_acc">
 </head>
 
-<body>
+<body data-branch-code="{{ request.current_branch.branch_code|default:'OD3301LR-JGM' }}" data-firebase-project="laundryrage-inventory">
+
+
+    <!-- Global Offline Banner -->
+    <div id="global-offline-banner" class="global-offline-banner" style="display: none;" role="alert">
+        <div class="offline-banner-content">
+            <span class="offline-banner-icon">⚠</span>
+            <div class="offline-banner-text">
+                <strong>You're Offline</strong>
+                <span>Changes will sync automatically when you're back online.</span>
+            </div>
+        </div>
+    </div>
+
+
+
     <div class="ambient-background" aria-hidden="true">
         <span class="ambient-bubble"></span>
         <span class="ambient-bubble"></span>
@@ -31,6 +46,34 @@
 
     <!-- Toast notifications -->
     <div class="toast-container" id="toast-container"></div>
+
+    <!-- Standardized Confirmation Dialog Modal -->
+    <div class="modal-overlay" id="confirm-dialog-modal" style="display: none;" aria-hidden="true">
+        <div class="modal-content confirm-modal-content">
+            <div class="modal-header">
+                <h2 id="confirm-dialog-title">Confirm Action</h2>
+                <button class="modal-close" type="button" id="confirm-dialog-close">&times;</button>
+            </div>
+            <div class="modal-body" id="confirm-dialog-body" style="padding: 1rem 0;">
+                <p id="confirm-dialog-msg" style="font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.45;"></p>
+                <div class="confirm-diff-box" style="background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Current Stock</div>
+                        <div id="confirm-dialog-curr" style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary);">0</div>
+                    </div>
+                    <div style="font-size: 1.25rem; color: var(--text-muted); font-weight: 700;">&rarr;</div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">New Stock</div>
+                        <div id="confirm-dialog-new" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-orange, #f59e0b);">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions" style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem;">
+                <button class="btn-secondary" type="button" id="confirm-dialog-cancel">Cancel</button>
+                <button class="btn-primary" type="button" id="confirm-dialog-proceed" style="background: #DC2626; border-color: #DC2626; color: #FFF;">Confirm</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Navbar Component Inclusion -->
     {% include "components/navbar.html" %}
@@ -126,8 +169,13 @@
         </a>
     </nav>
 
+    <!-- Firebase SDK (Spark Plan Real-time Sync) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
     <!-- JavaScript -->
-    <script src="{% static 'js/inventory.js' %}"></script>
+    <script src="{% static 'js/inventory.js' %}?v=20260906_fb_v3"></script>
 </body>
 
 </html>

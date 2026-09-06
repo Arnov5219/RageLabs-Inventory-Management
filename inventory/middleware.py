@@ -81,10 +81,12 @@ class LoginRequiredMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Exclude login, logout, Django admin, static/media from login enforcement
+        # Exclude login, logout, Django admin, static/media, and public API endpoints from login enforcement
         exempt_paths = [
             reverse('inventory:login'),
             '/admin/',
+            '/api/health/',
+            '/api/log-client-error/',
         ]
         if hasattr(settings, 'STATIC_URL') and settings.STATIC_URL:
             exempt_paths.append(settings.STATIC_URL)

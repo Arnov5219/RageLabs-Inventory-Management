@@ -2898,5 +2898,479 @@ img {
     font-weight: 500;
 }
 
+/* ==============================================================
+   PRODUCTION READINESS & RELIABILITY STYLES
+   ============================================================== */
+
+/* 1. App Startup Splash Screen (Disabled to prevent blocking page load) */
+.app-startup-splash {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.splash-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 320px;
+    padding: 2rem 1.5rem;
+}
+
+.splash-icon-box {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: #0F172A;
+    border: 2px solid rgba(234, 179, 8, 0.4);
+    box-shadow: 0 10px 25px -5px rgba(234, 179, 8, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+}
+
+.splash-logo {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
+.splash-brand-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.35rem;
+}
+
+.splash-subtitle {
+    font-size: 0.88rem;
+    color: #94A3B8;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+}
+
+.splash-bar {
+    width: 140px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+}
+
+.splash-bar-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #EAB308, #FDE047);
+    border-radius: 999px;
+    animation: splashIndeterminate 1.2s infinite ease-in-out;
+    transform-origin: 0% 50%;
+}
+
+@keyframes splashIndeterminate {
+    0% { transform: translateX(-100%) scaleX(0.2); }
+    50% { transform: translateX(0%) scaleX(0.7); }
+    100% { transform: translateX(100%) scaleX(0.2); }
+}
+
+/* 2. Global Offline Banner */
+.global-offline-banner {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: linear-gradient(135deg, #78350F 0%, #92400E 100%);
+    color: #FEF3C7;
+    padding: 0.6rem 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+    animation: slideDown 0.25s ease-out;
+}
+
+.offline-banner-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.offline-banner-icon {
+    font-size: 1.15rem;
+    color: #FDE047;
+    flex-shrink: 0;
+}
+
+.offline-banner-text {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.offline-banner-text strong {
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* 3. Live Sync Status Indicator (Floating pill widget) */
+.sync-status-indicator {
+    position: fixed;
+    top: 1rem;
+    right: 1.25rem;
+    z-index: 120;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    transition: all 0.25s ease;
+    user-select: none;
+}
+
+.sync-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    transition: background-color 0.25s ease;
+}
+
+/* Sync States */
+.sync-status-indicator.sync-live .sync-dot {
+    background-color: #10B981;
+    box-shadow: 0 0 8px #10B981;
+}
+
+.sync-status-indicator.sync-syncing .sync-dot {
+    background-color: #F59E0B;
+    animation: syncPulse 1s infinite alternate;
+}
+
+.sync-status-indicator.sync-offline {
+    background: rgba(100, 116, 139, 0.85);
+    border-color: rgba(148, 163, 184, 0.4);
+}
+.sync-status-indicator.sync-offline .sync-dot {
+    background-color: #CBD5E1;
+}
+
+.sync-status-indicator.sync-pending {
+    background: rgba(194, 65, 12, 0.88);
+    border-color: rgba(251, 146, 60, 0.5);
+}
+.sync-status-indicator.sync-pending .sync-dot {
+    background-color: #FDBA74;
+    animation: syncPulse 0.8s infinite alternate;
+}
+
+.sync-status-indicator.sync-failed {
+    background: rgba(153, 27, 27, 0.9);
+    border-color: rgba(248, 113, 113, 0.5);
+    cursor: pointer;
+}
+.sync-status-indicator.sync-failed .sync-dot {
+    background-color: #FCA5A5;
+}
+
+@keyframes syncPulse {
+    from { opacity: 0.4; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1.15); }
+}
+
+@media (max-width: 768px) {
+    .sync-status-indicator {
+        top: 0.65rem;
+        right: 0.85rem;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.72rem;
+    }
+}
+
+.account-page-header .sync-status-indicator {
+    position: static;
+    top: auto;
+    right: auto;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* 4. Search & Advanced Filter Bar */
+.inventory-controls-bar {
+    margin: 0.75rem 0 1.25rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.search-input-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.search-input {
+    width: 100%;
+    height: 2.85rem;
+    padding: 0 2.5rem 0 2.75rem;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--surface-card);
+    border: 1.5px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.search-input:focus {
+    border-color: #EAB308;
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2);
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 0.75rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #E2E8F0;
+    border: none;
+    color: #475569;
+    font-size: 1.1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.search-clear-btn:hover {
+    background: #CBD5E1;
+}
+
+.filter-and-sort-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.filter-chips-scroll {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+}
+
+.filter-chips-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-chip {
+    padding: 0.4rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: inherit;
+    border: 1px solid var(--border-color);
+    background: var(--surface-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.filter-chip:hover {
+    background: #F1F5F9;
+    color: var(--text-primary);
+}
+
+.filter-chip.active {
+    background: #0F172A;
+    color: #FFFFFF;
+    border-color: #0F172A;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+}
+
+.filter-chip.chip-low.active {
+    background: #FEE2E2;
+    color: #991B1B;
+    border-color: #FCA5A5;
+}
+
+.filter-chip.chip-mod.active {
+    background: #FEF3C7;
+    color: #92400E;
+    border-color: #FCD34D;
+}
+
+.filter-chip.chip-suff.active {
+    background: #DCFCE7;
+    color: #166534;
+    border-color: #86EFAC;
+}
+
+.sort-dropdown-wrap {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.sort-select {
+    padding: 0.4rem 0.85rem;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: inherit;
+    border: 1px solid var(--border-color);
+    background: var(--surface-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+}
+
+.sort-select:focus {
+    border-color: #EAB308;
+}
+
+/* 5. Button Flight States & Spinners */
+.btn-loading {
+    position: relative;
+    pointer-events: none !important;
+    opacity: 0.75 !important;
+}
+
+.btn-loading::after {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 0.4rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: btnSpin 0.6s linear infinite;
+    vertical-align: -2px;
+}
+
+@keyframes btnSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* 6. Card Queued Indicator */
+.product-card.is-queued {
+    border-color: #F59E0B !important;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3) !important;
+}
+
+.queued-badge-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    background: #FEF3C7;
+    color: #92400E;
+    border: 1px solid #FCD34D;
+}
+
+/* 7. Skeleton Loading States */
+.skeleton-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-shimmer {
+    background: linear-gradient(90deg, rgba(241, 245, 249, 0.8) 0%, rgba(226, 232, 240, 0.9) 50%, rgba(241, 245, 249, 0.8) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* 8. Toast Retry Button */
+.toast-retry-btn {
+    margin-left: 0.5rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.toast-retry-btn:hover {
+    opacity: 0.8;
+}
+
+/* 9. Live Firebase Stock Highlight */
+.stock-updated-pulse {
+    animation: liveStockHighlight 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes liveStockHighlight {
+    0% {
+        color: #10B981;
+        transform: scale(1.18);
+        text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+    50% {
+        color: #059669;
+    }
+    100% {
+        color: inherit;
+        transform: scale(1);
+        text-shadow: none;
+    }
+}
+
+
 
 

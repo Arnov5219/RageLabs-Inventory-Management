@@ -1,0 +1,9 @@
+{
+  "appId": "com.laundryrage.inventory",
+  "appName": "LaundryRage Inventory",
+  "webDir": "www",
+  "server": {
+    "url": "https://securities-shark-holders-invisible.trycloudflare.com",
+    "cleartext": true
+  }
+}
