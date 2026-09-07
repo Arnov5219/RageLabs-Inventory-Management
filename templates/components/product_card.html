@@ -57,10 +57,10 @@
         <!-- Adjust Controls: Pill Stepper and Edit button (AJAX) -->
         <div class="adjust-controls" style="margin-top: 0.85rem;">
             <div class="pill-selector">
-                <button class="pill-btn minus" type="button" aria-label="Decrease quantity">−</button>
+                <button class="pill-btn minus" type="button" aria-label="Decrease quantity" disabled>−</button>
                 <span class="pill-value">{{ product.inventory.current_quantity|floatformat:"0" }}</span>
                 <input type="number" class="pill-value-input" value="{{ product.inventory.current_quantity|floatformat:"0" }}" min="0" step="1" style="display: none;" required>
-                <button class="pill-btn plus" type="button" aria-label="Increase quantity">+</button>
+                <button class="pill-btn plus" type="button" aria-label="Increase quantity" disabled>+</button>
             </div>
             <button class="edit-btn" type="button">Edit</button>
         </div>

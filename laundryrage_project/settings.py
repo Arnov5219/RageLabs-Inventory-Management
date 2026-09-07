@@ -23,6 +23,8 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
+    'https://*.run.app',
+    'https://*.appspot.com',
     'https://*.trycloudflare.com',
     'https://*.localtunnel.me',
     'http://localhost:8000',
@@ -59,6 +61,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+try:
+    import whitenoise  # noqa: F401
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+except ImportError:
+    pass
+
 ROOT_URLCONF = 'laundryrage_project.urls'
 
 TEMPLATES = [
@@ -90,6 +98,14 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+_database_url = os.getenv('DATABASE_URL')
+if _database_url:
+    try:
+        import dj_database_url
+        DATABASES['default'] = dj_database_url.parse(_database_url, conn_max_age=600)
+    except ImportError:
+        pass
 
 
 # Password validation
@@ -146,6 +162,20 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+try:
+    import whitenoise  # noqa: F401
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+except ImportError:
+    pass
 
 # Uploaded product images
 MEDIA_URL = 'media/'

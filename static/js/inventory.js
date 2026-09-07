@@ -832,35 +832,82 @@ function initApp() {
         });
     }
 
-    // 2. Direct On-Card Editing logic (Edit / Done state toggle with conflict check & confirmation)
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const card = btn.closest('.product-card');
-            const productId = card.dataset.productId;
-            const productName = card.querySelector('.product-name').innerText;
-            const unit = card.dataset.productUnit;
-            const isEditing = btn.classList.contains('active-edit');
-            
-            const valEl = card.querySelector('.pill-value');
-            const inputEl = card.querySelector('.pill-value-input');
+    // 2. Direct On-Card Editing logic (Stock changes strictly locked until 'Edit' is pressed)
+    document.querySelectorAll('.product-card').forEach(card => {
+        const editBtn = card.querySelector('.edit-btn');
+        const minusBtn = card.querySelector('.pill-btn.minus');
+        const plusBtn = card.querySelector('.pill-btn.plus');
+        const valEl = card.querySelector('.pill-value');
+        const inputEl = card.querySelector('.pill-value-input');
+        const pillSelector = card.querySelector('.pill-selector');
+
+        if (!editBtn || !valEl || !inputEl) return;
+
+        const productId = card.dataset.productId;
+        const productName = card.querySelector('.product-name')?.innerText || 'Product';
+        const unit = card.dataset.productUnit || '';
+
+        // Ensure buttons start disabled until Edit is pressed
+        if (minusBtn) minusBtn.disabled = true;
+        if (plusBtn) plusBtn.disabled = true;
+
+        // If user clicks on locked stepper outside of edit mode, inform them
+        if (pillSelector) {
+            pillSelector.addEventListener('click', (e) => {
+                if (!card.classList.contains('is-editing')) {
+                    showToast('Click "Edit" to adjust stock.', 'info');
+                }
+            });
+        }
+
+        // Stepper: + and - buttons only adjust the editable draft input when in Edit mode
+        if (plusBtn) {
+            plusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!card.classList.contains('is-editing')) return;
+                const cur = parseFloat(inputEl.value) || 0;
+                inputEl.value = Math.round(cur + 1);
+            });
+        }
+
+        if (minusBtn) {
+            minusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!card.classList.contains('is-editing')) return;
+                const cur = parseFloat(inputEl.value) || 0;
+                inputEl.value = Math.max(0, Math.round(cur - 1));
+            });
+        }
+
+        // Edit button handler
+        editBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isEditing = editBtn.classList.contains('active-edit');
             const currentStock = parseFloat(card.dataset.currentStock || valEl.innerText || 0);
-            
+
             if (!isEditing) {
                 // Enter Edit Mode
-                btn.classList.add('active-edit');
-                btn.innerText = 'Done';
+                card.classList.add('is-editing');
+                editBtn.classList.add('active-edit');
+                editBtn.innerText = 'Done';
+                if (minusBtn) minusBtn.disabled = false;
+                if (plusBtn) plusBtn.disabled = false;
                 valEl.style.display = 'none';
                 inputEl.style.display = 'inline-block';
+                inputEl.value = Math.round(currentStock);
                 inputEl.focus();
                 inputEl.select();
             } else {
-                // Done clicked - save value
+                // Done / Save clicked - save value
                 const newValue = parseFloat(inputEl.value);
                 if (isNaN(newValue) || newValue < 0) {
                     showToast('Please specify a valid non-negative quantity.', 'warning');
                     return;
                 }
-                
+
                 if (newValue % 1 !== 0) {
                     showToast('Quantity must be a whole number.', 'warning');
                     return;
@@ -868,8 +915,11 @@ function initApp() {
 
                 // If stock didn't change, just exit edit mode
                 if (newValue === currentStock) {
-                    btn.classList.remove('active-edit');
-                    btn.innerText = 'Edit';
+                    card.classList.remove('is-editing');
+                    editBtn.classList.remove('active-edit');
+                    editBtn.innerText = 'Edit';
+                    if (minusBtn) minusBtn.disabled = true;
+                    if (plusBtn) plusBtn.disabled = true;
                     inputEl.style.display = 'none';
                     valEl.style.display = 'inline-block';
                     return;
@@ -900,17 +950,21 @@ function initApp() {
                     });
                     // Optimistic update
                     updateCardStockDisplay(card, newValue, null, card.dataset.productStatus, null, unit);
-                    btn.classList.remove('active-edit');
-                    btn.innerText = 'Edit';
+                    card.classList.remove('is-editing');
+                    editBtn.classList.remove('active-edit');
+                    editBtn.innerText = 'Edit';
+                    if (minusBtn) minusBtn.disabled = true;
+                    if (plusBtn) plusBtn.disabled = true;
                     inputEl.style.display = 'none';
                     valEl.style.display = 'inline-block';
+                    showToast('Stock update saved offline. Will sync when back online.', 'info');
                     return;
                 }
-                
-                btn.disabled = true;
-                btn.classList.add('btn-loading');
-                btn.innerText = 'Saving...';
-                
+
+                editBtn.disabled = true;
+                editBtn.classList.add('btn-loading');
+                editBtn.innerText = 'Saving...';
+
                 try {
                     const response = await fetch('/stock/adjust-ajax/', {
                         method: 'POST',
@@ -926,7 +980,7 @@ function initApp() {
                             notes: 'Manual stock edit via card'
                         })
                     });
-                    
+
                     const data = await response.json();
 
                     if (response.status === 409) {
@@ -935,135 +989,44 @@ function initApp() {
                             updateCardStockDisplay(card, data.current_stock, null, card.dataset.productStatus, data.base_stock, unit);
                         }
                         showToast(data.error || 'This product was updated on another device. Latest stock reloaded.', 'warning');
-                        btn.innerText = 'Done';
+                        editBtn.innerText = 'Done';
                         return;
                     }
 
                     if (response.ok && data.success) {
                         updateCardStockDisplay(card, data.new_quantity, data.remaining_percentage, data.status, data.base_stock, unit);
                         showToast('✓ Stock updated successfully', 'success');
-                        
+
                         if (data.low_stock_alert) {
                             LowStockTracker.notify(data.low_stock_alert);
                         }
 
                         // Exit Edit Mode
-                        btn.classList.remove('active-edit');
-                        btn.innerText = 'Edit';
+                        card.classList.remove('is-editing');
+                        editBtn.classList.remove('active-edit');
+                        editBtn.innerText = 'Edit';
+                        if (minusBtn) minusBtn.disabled = true;
+                        if (plusBtn) plusBtn.disabled = true;
                         inputEl.style.display = 'none';
                         valEl.style.display = 'inline-block';
                     } else if (response.status === 403) {
                         showToast(data.error || 'Permission denied. You can only manage your assigned branch.', 'error');
-                        btn.innerText = 'Done';
+                        editBtn.innerText = 'Done';
                     } else {
                         showToast(data.error || 'Unable to update stock.', 'warning');
-                        btn.innerText = 'Done';
+                        editBtn.innerText = 'Done';
                     }
                 } catch (error) {
                     console.error('AJAX Error:', error);
                     showToast('Unable to update stock. Please check your connection.', 'error', {
-                        retryCallback: () => btn.click()
+                        retryCallback: () => editBtn.click()
                     });
-                    btn.innerText = 'Done';
+                    editBtn.innerText = 'Done';
                 } finally {
-                    btn.disabled = false;
-                    btn.classList.remove('btn-loading');
+                    editBtn.disabled = false;
+                    editBtn.classList.remove('btn-loading');
                 }
             }
-        });
-    });
-
-    // 3. Pill Stepper (+ / - Buttons) with Atomic Delta Updates & Confirmation
-    document.querySelectorAll('.pill-selector').forEach(selector => {
-        const minusBtn = selector.querySelector('.minus');
-        const plusBtn = selector.querySelector('.plus');
-        const card = selector.closest('.product-card');
-        if (!card || !minusBtn || !plusBtn) return;
-
-        const productId = card.dataset.productId;
-        const productName = card.querySelector('.product-name').innerText;
-        const unit = card.dataset.productUnit;
-
-        const handleStep = async (delta) => {
-            const currentStock = parseFloat(card.dataset.currentStock || card.querySelector('.pill-value')?.innerText || 0);
-            const targetStock = Math.max(0, currentStock + delta);
-
-            // Confirmation for large stock drop
-            if (delta < 0 && (Math.abs(delta) >= 10 || (currentStock > 0 && Math.abs(delta) > (currentStock * 0.5)))) {
-                const confirmed = await ConfirmDialog.ask({
-                    title: 'Reduce Stock?',
-                    message: `You are about to remove ${Math.abs(delta)} ${unit} of "${productName}".`,
-                    currentStock: `${currentStock} ${unit}`,
-                    newStock: `${targetStock} ${unit}`,
-                    confirmText: 'Confirm Reduction',
-                    isDanger: true
-                });
-                if (!confirmed) return;
-            }
-
-            // Optimistic update
-            updateCardStockDisplay(card, targetStock, null, card.dataset.productStatus, null, unit);
-
-            // If offline, queue delta safely
-            if (!NetworkManager.isOnline) {
-                NetworkManager.enqueue({
-                    product_id: productId,
-                    action: 'delta',
-                    quantity: delta,
-                    expected_stock: currentStock,
-                    notes: `Offline delta adjustment (${delta > 0 ? '+' : ''}${delta})`
-                });
-                return;
-            }
-
-            try {
-                const response = await fetch('/stock/adjust-ajax/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        product_id: productId,
-                        quantity: delta,
-                        action: 'delta',
-                        expected_stock: currentStock,
-                        notes: `Card stepper (${delta > 0 ? '+' : ''}${delta})`
-                    })
-                });
-
-                const data = await response.json();
-                if (response.ok && data.success) {
-                    updateCardStockDisplay(card, data.new_quantity, data.remaining_percentage, data.status, data.base_stock, unit);
-                    if (data.low_stock_alert) {
-                        LowStockTracker.notify(data.low_stock_alert);
-                    }
-                } else if (response.status === 409) {
-                    if (data.current_stock) {
-                        updateCardStockDisplay(card, data.current_stock, null, card.dataset.productStatus, data.base_stock, unit);
-                    }
-                    showToast(data.error || 'Inventory updated on another device. Reloaded latest.', 'warning');
-                } else {
-                    // Revert to original stock on error
-                    updateCardStockDisplay(card, currentStock, null, card.dataset.productStatus, null, unit);
-                    showToast(data.error || 'Unable to update stock.', 'error');
-                }
-            } catch (err) {
-                console.error('Stepper error:', err);
-                // Revert on error
-                updateCardStockDisplay(card, currentStock, null, card.dataset.productStatus, null, unit);
-                showToast('Unable to update stock. Check connection.', 'error');
-            }
-        };
-
-        minusBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            handleStep(-1);
-        });
-
-        plusBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            handleStep(1);
         });
     });
 

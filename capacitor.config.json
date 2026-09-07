@@ -3,7 +3,7 @@
   "appName": "LaundryRage Inventory",
   "webDir": "www",
   "server": {
-    "url": "https://securities-shark-holders-invisible.trycloudflare.com",
+    "url": "https://laundryrage-inventory.uc.r.appspot.com",
     "cleartext": true
   }
 }

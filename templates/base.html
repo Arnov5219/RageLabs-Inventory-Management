@@ -14,12 +14,78 @@
     
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
 
+    <!-- Prevent loading screen flicker on subsequent internal page navigations -->
+    <script>
+        try {
+            if (sessionStorage.getItem('lr_app_opened')) {
+                document.documentElement.classList.add('app-already-opened');
+            }
+        } catch (e) {}
+    </script>
+    <style>
+        .app-already-opened #app-page-loader {
+            display: none !important;
+        }
+    </style>
+
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260906_sync_acc">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260907_big_logo">
 </head>
 
 <body data-branch-code="{{ request.current_branch.branch_code|default:'OD3301LR-JGM' }}" data-firebase-project="laundryrage-inventory">
 
+    <!-- Branded App Loading Screen (Matching Screenshot 2 - only shows on initial app launch) -->
+    <div class="app-page-loader" id="app-page-loader" aria-hidden="false">
+        <div class="app-loader-ambient"></div>
+        <div style="height: 20px;"></div>
+
+        <div class="app-loader-center">
+            <img src="{% static 'images/logo.png' %}" alt="Laundry RAGE" class="app-loader-logo" onerror="this.src='{% static 'images/andriod.jpg' %}';">
+            <div class="app-loader-track">
+                <div class="app-loader-bar"></div>
+            </div>
+        </div>
+
+        <div class="app-loader-bottom">
+            <div class="app-loader-hanger">
+                <svg viewBox="0 0 100 80" fill="none" stroke="#050505" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M 50 35 C 50 25 62 23 62 14 C 62 7 54 5 48 9 C 45 11 45 15 46 18" />
+                    <path d="M 50 35 L 14 58 C 10 61 12 66 17 66 L 83 66 C 88 66 90 61 86 58 Z" />
+                </svg>
+            </div>
+            <div class="app-loader-tagline">
+                <span>HANDLED WITH CARE</span>
+                <span class="app-loader-heart">❤️</span>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function() {
+            var loader = document.getElementById('app-page-loader');
+            if (!loader) return;
+            try {
+                if (sessionStorage.getItem('lr_app_opened')) {
+                    loader.style.display = 'none';
+                    if (loader.parentNode) loader.parentNode.removeChild(loader);
+                    return;
+                }
+                sessionStorage.setItem('lr_app_opened', '1');
+            } catch (e) {}
+
+            function hideLoader() {
+                if (loader && !loader.classList.contains('loaded')) {
+                    loader.classList.add('loaded');
+                    setTimeout(function() { 
+                        if (loader && loader.parentNode) loader.parentNode.removeChild(loader); 
+                    }, 450);
+                }
+            }
+            window.addEventListener('load', function() {
+                setTimeout(hideLoader, 400);
+            });
+            setTimeout(hideLoader, 2500);
+        })();
+    </script>
 
     <!-- Global Offline Banner -->
     <div id="global-offline-banner" class="global-offline-banner" style="display: none;" role="alert">
@@ -175,7 +241,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <!-- JavaScript -->
-    <script src="{% static 'js/inventory.js' %}?v=20260906_fb_v3"></script>
+    <script src="{% static 'js/inventory.js' %}?v=20260907_edit_lock_v1"></script>
 </body>
 
 </html>

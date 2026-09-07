@@ -2,7 +2,7 @@
 <header class="desktop-header">
     <nav class="navbar">
         <a href="{% url 'inventory:dashboard' %}" class="logo" id="logo-brand">
-            <img src="{% static 'images/logo.png' %}" alt="LaundryRage">
+            <img src="{% static 'images/logo.png' %}" alt="LaundryRage" onerror="this.src='{% static 'images/andriod.jpg' %}';">
         </a>
         
         <button class="nav-toggle" id="nav-toggle-btn" aria-label="Toggle navigation" aria-expanded="false">

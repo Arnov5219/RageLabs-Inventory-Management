@@ -1,0 +1,13 @@
+.git
+.gitignore
+.github
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+android
+node_modules
+*.apk
+.gemini
+staticfiles
