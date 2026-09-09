@@ -511,33 +511,63 @@ def _history_view(request, *, category, export_category, title, template_name, i
                             pass
                     export_qs = export_qs.filter(month_q)
 
-                # Split by category and export both sheets for this branch
+                from concurrent.futures import ThreadPoolExecutor
+
+                # Split by category and only export categories relevant to the active tab
                 supplies_records = export_qs.filter(product__category='Laundry Supplies')
                 accessories_records = export_qs.filter(product__category='Accessories')
 
-                res_supplies = export_to_google_sheets(
-                    'supplies', supplies_records, spreadsheet_id=sheet_id,
-                    branch_code=branch.branch_code if branch else None,
-                    branch_name=branch.branch_name if branch else None,
-                )
+                do_supplies = (active_cat_tab in ('all', 'supplies')) and supplies_records.exists()
+                do_accessories = (active_cat_tab in ('all', 'accessories')) and accessories_records.exists()
 
-                res_accessories = export_to_google_sheets(
-                    'accessories', accessories_records, spreadsheet_id=sheet_id,
-                    branch_code=branch.branch_code if branch else None,
-                    branch_name=branch.branch_name if branch else None,
-                )
+                if not do_supplies and not do_accessories:
+                    err_text = "No records found for the selected category and months."
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'error': err_text}, status=400)
+                    messages.error(request, err_text)
+                    return redirect(request.path)
+
+                res_supplies = {}
+                res_accessories = {}
+
+                def _export_supplies():
+                    return export_to_google_sheets(
+                        'supplies', supplies_records, spreadsheet_id=sheet_id,
+                        branch_code=branch.branch_code if branch else None,
+                        branch_name=branch.branch_name if branch else None,
+                    )
+
+                def _export_accessories():
+                    return export_to_google_sheets(
+                        'accessories', accessories_records, spreadsheet_id=sheet_id,
+                        branch_code=branch.branch_code if branch else None,
+                        branch_name=branch.branch_name if branch else None,
+                    )
+
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    fut_s = executor.submit(_export_supplies) if do_supplies else None
+                    fut_a = executor.submit(_export_accessories) if do_accessories else None
+
+                    if fut_s:
+                        res_supplies = fut_s.result() or {}
+                    if fut_a:
+                        res_accessories = fut_a.result() or {}
 
                 month_labels = [m['label'] for m in month_options if m['checked']]
                 months_str = ", ".join(month_labels)
+                sheet_url = (
+                    res_supplies.get('spreadsheet_url')
+                    or res_accessories.get('spreadsheet_url')
+                    or (f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit" if sheet_id else None)
+                )
+
                 if branch:
-                    sheet_url = res_supplies.get('spreadsheet_url') or f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
-                    messages.success(request, mark_safe(f"Successfully exported {months_str} history to {branch.branch_name} Google Sheets. <a href='{sheet_url}' target='_blank' style='text-decoration: underline; font-weight: bold; margin-left: 0.5rem;'>Open Google Sheet &rarr;</a>"))
+                    link_html = f"<a href='{sheet_url}' target='_blank' style='text-decoration: underline; font-weight: bold; margin-left: 0.5rem;'>Open Google Sheet &rarr;</a>" if sheet_url else ""
+                    messages.success(request, mark_safe(f"Successfully exported {months_str} history to {branch.branch_name} Google Sheets. {link_html}"))
                 else:
                     messages.success(request, f"Successfully exported history to Google Sheets.")
-                if res_supplies and res_supplies.get('spreadsheet_url'):
-                    open_sheet_url = res_supplies.get('spreadsheet_url')
-                elif sheet_id:
-                    open_sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
+
+                open_sheet_url = sheet_url
 
                 if is_ajax:
                     return JsonResponse({

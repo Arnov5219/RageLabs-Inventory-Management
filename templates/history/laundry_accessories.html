@@ -41,20 +41,36 @@
         <input type="hidden" name="category" value="{{ active_cat_tab }}">
         {% endif %}
 
-        <!-- Select Month(s) -->
-        <div class="form-group" style="margin-bottom: 0;">
+        <!-- Select Month(s) Dropdown -->
+        <div class="form-group month-dropdown-container" id="month-dropdown-container" style="margin-bottom: 0;">
             <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
                 Select Month(s)
             </label>
-            <div class="months-checkbox-grid" style="display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0.25rem 0;">
-                {% for option in month_options %}
-                <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); cursor: pointer; user-select: none;">
-                    <input type="checkbox" name="months" value="{{ option.value }}" {% if option.checked %}checked{% endif %} style="accent-color: var(--accent-gold); width: 1.15rem; height: 1.15rem; cursor: pointer;">
-                    {{ option.label }}
-                </label>
-                {% empty %}
-                <span style="color: var(--text-muted); font-size: 0.9rem;">No historical dates available</span>
-                {% endfor %}
+            
+            <button type="button" class="month-dropdown-trigger" id="month-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <span style="font-size: 1.05rem;">📅</span>
+                    <span id="month-dropdown-label">Select Month(s)</span>
+                </span>
+                <span class="month-dropdown-arrow">▼</span>
+            </button>
+
+            <div class="month-dropdown-menu" id="month-dropdown-menu">
+                <div class="month-dropdown-header">
+                    <button type="button" class="month-action-btn select-all" id="month-select-all">Select All</button>
+                    <button type="button" class="month-action-btn clear-all" id="month-clear-all">Clear All</button>
+                </div>
+
+                <div class="month-options-list" style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    {% for option in month_options %}
+                    <label class="month-option-item">
+                        <input type="checkbox" name="months" value="{{ option.value }}" {% if option.checked %}checked{% endif %} class="month-checkbox" data-label="{{ option.label }}">
+                        <span>{{ option.label }}</span>
+                    </label>
+                    {% empty %}
+                    <div style="padding: 0.75rem; color: var(--text-muted); font-size: 0.88rem; text-align: center;">No historical dates available</div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
@@ -101,9 +117,176 @@
     {% endif %}
 </div>
 
-{% if open_sheet_url %}
 <script>
-    window.open('{{ open_sheet_url }}', '_blank');
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Month Multi-Select Dropdown ───────────────────────────
+    const trigger = document.getElementById('month-dropdown-trigger');
+    const menu = document.getElementById('month-dropdown-menu');
+    const label = document.getElementById('month-dropdown-label');
+    const container = document.getElementById('month-dropdown-container');
+    const selectAllBtn = document.getElementById('month-select-all');
+    const clearAllBtn = document.getElementById('month-clear-all');
+
+    if (trigger && menu && label) {
+        const checkboxes = menu.querySelectorAll('.month-checkbox');
+
+        function updateLabel() {
+            const checked = Array.from(checkboxes).filter(cb => cb.checked);
+            if (checked.length === 0) {
+                label.textContent = 'Select Month(s)';
+                label.style.color = 'var(--text-muted, #94A3B8)';
+            } else if (checked.length === 1) {
+                label.textContent = checked[0].getAttribute('data-label') || checked[0].value;
+                label.style.color = 'inherit';
+            } else if (checked.length === checkboxes.length) {
+                label.textContent = `All Months (${checked.length})`;
+                label.style.color = 'inherit';
+            } else {
+                label.textContent = `${checked.length} Months Selected`;
+                label.style.color = 'inherit';
+            }
+        }
+
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isOpen = menu.classList.contains('open');
+            if (isOpen) {
+                menu.classList.remove('open');
+                trigger.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            } else {
+                menu.classList.add('open');
+                trigger.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (container && !container.contains(e.target)) {
+                menu.classList.remove('open');
+                trigger.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateLabel);
+        });
+
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                checkboxes.forEach(cb => { cb.checked = true; });
+                updateLabel();
+            });
+        }
+
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                checkboxes.forEach(cb => { cb.checked = false; });
+                updateLabel();
+            });
+        }
+
+        updateLabel();
+    }
+
+    // ── Export History AJAX ──────────────────────────────────
+    const exportBtn = document.getElementById('btn-export-history');
+    if (!exportBtn) return;
+
+    exportBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const form = exportBtn.closest('form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+
+        for (const [key, value] of formData.entries()) {
+            params.append(key, value);
+        }
+        params.set('export', 'google_sheets');
+
+        // Visual loading state on the button
+        const originalHtml = exportBtn.innerHTML;
+        exportBtn.disabled = true;
+        exportBtn.style.opacity = '0.8';
+        exportBtn.style.cursor = 'wait';
+        exportBtn.innerHTML = `
+            <span class="export-spinner" style="display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: export-spin 0.6s linear infinite;"></span>
+            <span>Exporting to Sheets...</span>
+        `;
+
+        if (!document.getElementById('export-spin-style')) {
+            const style = document.createElement('style');
+            style.id = 'export-spin-style';
+            style.textContent = '@keyframes export-spin { to { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+        }
+
+        const fetchUrl = (form.getAttribute('action') || window.location.pathname) + '?' + params.toString();
+
+        fetch(fetchUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json().then(data => ({ status: response.status, data })))
+        .then(({ status, data }) => {
+            exportBtn.disabled = false;
+            exportBtn.style.opacity = '1';
+            exportBtn.style.cursor = 'pointer';
+            exportBtn.innerHTML = originalHtml;
+
+            if (data.success) {
+                const sheetUrl = data.spreadsheet_url;
+                if (typeof showToast === 'function') {
+                    showToast(`Successfully exported history to ${data.branch || 'Google'} Sheets!`, 'success');
+                }
+
+                let alertBox = document.getElementById('history-export-alert');
+                if (!alertBox) {
+                    alertBox = document.createElement('div');
+                    alertBox.id = 'history-export-alert';
+                    form.parentNode.insertBefore(alertBox, form);
+                }
+                alertBox.innerHTML = `
+                    <div class="toast success show" style="transform: none; position: relative; width: 100%; margin-bottom: 1.25rem; box-shadow: var(--shadow-premium); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.6rem;">
+                            <span class="toast-icon">✓</span>
+                            <span class="toast-message">Successfully exported <strong>${data.months || ''}</strong> history to <strong>${data.branch || ''}</strong> Google Sheets.</span>
+                        </div>
+                        ${sheetUrl ? `<a href="${sheetUrl}" target="_blank" style="color: #059669; font-weight: 800; text-decoration: underline; padding: 0.25rem 0.5rem; background: rgba(5, 150, 105, 0.1); border-radius: 6px;">Open Google Sheet &rarr;</a>` : ''}
+                    </div>
+                `;
+
+                if (sheetUrl) {
+                    window.open(sheetUrl, '_blank');
+                }
+            } else {
+                const errMsg = data.error || 'Failed to export to Google Sheets.';
+                if (typeof showToast === 'function') {
+                    showToast(errMsg, 'error');
+                } else {
+                    alert(errMsg);
+                }
+            }
+        })
+        .catch(err => {
+            exportBtn.disabled = false;
+            exportBtn.style.opacity = '1';
+            exportBtn.style.cursor = 'pointer';
+            exportBtn.innerHTML = originalHtml;
+            console.error('Export error:', err);
+            if (typeof showToast === 'function') {
+                showToast('Export failed. Please check network connection.', 'error');
+            } else {
+                alert('Export failed. Please check your network connection.');
+            }
+        });
+    });
+});
 </script>
-{% endif %}
 {% endblock %}

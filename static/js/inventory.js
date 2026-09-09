@@ -36,18 +36,18 @@ function showToast(message, type = 'success', options = {}) {
 
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
+
     const icon = document.createElement('span');
     icon.className = 'toast-icon';
     if (type === 'success') icon.innerHTML = '✓';
     else if (type === 'error') icon.innerHTML = '✕';
     else if (type === 'warning') icon.innerHTML = '⚠';
     else icon.innerHTML = 'ℹ';
-    
+
     const msg = document.createElement('span');
     msg.className = 'toast-message';
     msg.innerText = message;
-    
+
     toast.appendChild(icon);
     toast.appendChild(msg);
 
@@ -63,11 +63,11 @@ function showToast(message, type = 'success', options = {}) {
         };
         toast.appendChild(retryBtn);
     }
-    
+
     container.appendChild(toast);
-    
+
     setTimeout(() => { toast.classList.add('show'); }, 10);
-    
+
     const autoDismiss = setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => { toast.remove(); }, 300);
@@ -206,7 +206,7 @@ const NetworkManager = {
             showToast('✓ Connection restored. Syncing pending changes...', 'success');
             this.drainQueue();
         } else if (!onlineState) {
-            showToast("⚠ You're Offline. Changes will sync when reconnected.", 'warning');
+            showToast("You're Offline. Changes will sync when reconnected.", 'warning');
         }
     },
 
@@ -605,7 +605,7 @@ function initCrashReporting() {
                     url: window.location.href,
                     userAgent: navigator.userAgent
                 })
-            }).catch(() => {});
+            }).catch(() => { });
         } catch {
             // Ignore logging transport failures
         }
@@ -741,7 +741,7 @@ function initApp() {
     // 1. Set Monthly Base Stock Modal Overlay (AJAX)
     const modalOverlay = document.getElementById('restock-modal');
     const modalForm = document.getElementById('restock-form');
-    
+
     if (modalOverlay && modalForm) {
         const modalClose = modalOverlay.querySelector('.modal-close');
         const modalCancel = modalOverlay.querySelector('.btn-secondary');
@@ -756,12 +756,12 @@ function initApp() {
                 const productId = card.dataset.productId;
                 const productName = card.querySelector('.product-name').innerText;
                 const unit = card.dataset.productUnit;
-                
+
                 modalProductIdInput.value = productId;
                 modalTitle.innerText = `Set Monthly Base Stock for ${productName}`;
                 modalQuantityInput.value = '';
                 modalQuantityInput.placeholder = `Base amount in ${unit}`;
-                
+
                 modalOverlay.classList.add('active');
                 modalQuantityInput.focus();
             });
@@ -778,7 +778,7 @@ function initApp() {
             e.preventDefault();
             const productId = modalProductIdInput.value;
             const quantity = parseFloat(modalQuantityInput.value);
-            
+
             if (isNaN(quantity) || quantity <= 0) {
                 showToast('Please specify a positive base stock quantity.', 'warning');
                 return;
@@ -814,7 +814,7 @@ function initApp() {
                         const unit = card.dataset.productUnit;
                         updateCardStockDisplay(card, data.new_quantity, data.remaining_percentage, data.status, data.base_stock, unit);
                     }
-                    showToast('✓ Monthly base stock updated successfully.', 'success');
+                    showToast('Monthly base stock updated successfully.', 'success');
                     closeModal();
                 } else if (response.status === 403) {
                     showToast(data.error || 'Permission denied. Only administrators can set base stock.', 'error');
@@ -995,7 +995,7 @@ function initApp() {
 
                     if (response.ok && data.success) {
                         updateCardStockDisplay(card, data.new_quantity, data.remaining_percentage, data.status, data.base_stock, unit);
-                        showToast('✓ Stock updated successfully', 'success');
+                        showToast('Stock updated successfully', 'success');
 
                         if (data.low_stock_alert) {
                             LowStockTracker.notify(data.low_stock_alert);
@@ -1041,27 +1041,27 @@ function initApp() {
                 showToast('Google Sheets export requires an active internet connection.', 'warning');
                 return;
             }
-            
+
             const form = exportHistoryBtn.closest('form');
             if (!form) return;
-            
+
             const checkedBoxes = form.querySelectorAll('input[name="months"]:checked');
             if (checkedBoxes.length === 0) {
                 showToast('Please select at least one month to export.', 'warning');
                 return;
             }
-            
+
             const params = new URLSearchParams();
             checkedBoxes.forEach(cb => {
                 params.append('months', cb.value);
             });
             params.append('export', 'google_sheets');
-            
+
             const originalHtml = exportHistoryBtn.innerHTML;
             exportHistoryBtn.disabled = true;
             exportHistoryBtn.classList.add('btn-loading');
             exportHistoryBtn.innerHTML = `<span>Exporting to Google Sheets...</span>`;
-            
+
             try {
                 const targetUrl = (form.getAttribute('action') || window.location.pathname) + '?' + params.toString();
                 const response = await fetch(targetUrl, {
@@ -1071,7 +1071,7 @@ function initApp() {
                         'Accept': 'application/json'
                     }
                 });
-                
+
                 const data = await response.json();
                 if (response.ok && data.success) {
                     showToast('✓ History successfully exported to Google Sheets', 'success');

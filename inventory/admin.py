@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Product, Inventory, MonthlyInventory, StockHistory, Branch, EmployeeProfile, SheetSyncLog, InventoryRefillRequest, InventoryRefillRequestItem
+from .models import Product, Inventory, MonthlyInventory, DailyInventory, StockHistory, Branch, EmployeeProfile, SheetSyncLog, InventoryRefillRequest, InventoryRefillRequestItem
 
 class EmployeeProfileInline(admin.StackedInline):
     model = EmployeeProfile
@@ -39,6 +39,20 @@ class StockHistoryAdmin(admin.ModelAdmin):
     list_display = ('product', 'branch', 'user', 'transaction_type', 'quantity', 'opening_stock', 'closing_stock', 'created_at')
     list_filter = ('transaction_type', 'branch')
     search_fields = ('product__name', 'user__username')
+
+@admin.register(DailyInventory)
+class DailyInventoryAdmin(admin.ModelAdmin):
+    list_display = ('date', 'product', 'branch', 'closing_stock', 'base_stock', 'updated_at')
+    list_filter = ('branch', 'date', 'product__category')
+    search_fields = ('product__name', 'branch__branch_name')
+    ordering = ('-date',)
+
+@admin.register(MonthlyInventory)
+class MonthlyInventoryAdmin(admin.ModelAdmin):
+    list_display = ('month', 'product', 'branch', 'current_stock', 'base_stock', 'total_added', 'total_used')
+    list_filter = ('branch', 'month', 'product__category')
+    search_fields = ('product__name', 'branch__branch_name')
+    ordering = ('-month',)
 
 @admin.register(SheetSyncLog)
 class SheetSyncLogAdmin(admin.ModelAdmin):

@@ -3597,4 +3597,138 @@ img {
     42% { transform: scale(1.2); }
     70% { transform: scale(1); }
 }
+
+/* Month Multi-Select Dropdown */
+.month-dropdown-container {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    user-select: none;
+}
+
+.month-dropdown-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: var(--surface-card, #ffffff);
+    border: 1.5px solid var(--border-color, #E2E8F0);
+    border-radius: 12px;
+    padding: 0.65rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: var(--shadow-sm);
+    text-align: left;
+}
+
+.month-dropdown-trigger:hover,
+.month-dropdown-trigger.open {
+    border-color: var(--accent-gold, #D97706);
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.12);
+}
+
+.month-dropdown-arrow {
+    font-size: 0.7rem;
+    color: var(--text-muted, #94A3B8);
+    transition: transform 0.2s ease;
+}
+
+.month-dropdown-trigger.open .month-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.month-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    min-width: 280px;
+    max-height: 280px;
+    overflow-y: auto;
+    background: var(--surface-card, #ffffff);
+    border: 1.5px solid var(--border-color, #E2E8F0);
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+    z-index: 100;
+    padding: 0.5rem;
+    animation: fadeInDown 0.15s ease-out;
+}
+
+.month-dropdown-menu.open {
+    display: block;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.month-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0.5rem 0.55rem 0.5rem;
+    border-bottom: 1px solid var(--border-color, #f1f5f9);
+    margin-bottom: 0.35rem;
+}
+
+.month-action-btn {
+    background: none;
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.month-action-btn.select-all {
+    color: var(--accent-gold, #D97706);
+}
+
+.month-action-btn.clear-all {
+    color: var(--text-muted, #94A3B8);
+}
+
+.month-action-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.month-option-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.month-option-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.month-option-item input[type="checkbox"] {
+    accent-color: var(--accent-gold, #D97706);
+    width: 1.15rem;
+    height: 1.15rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
 
